@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+.venv/
+.conda/
+output/
+data/
+/.vscode

@@ -1,0 +1,5 @@
+[console_scripts]
+sports-flashcards = sports_flashcard_maker.cli:cli_main
+
+[gui_scripts]
+sports-flashcards-gui = sports_flashcard_maker.gui:main
