@@ -272,7 +272,14 @@ def _overlay_league_logo(
         pass  # Never let a missing/corrupt league logo crash card generation
 
 
-def _build_logo_card(source_logo: Path, width_px: int, height_px: int) -> Image.Image:    card = Image.new("RGB", (width_px, height_px), color="white")
+def _build_logo_card(
+    source_logo: Path,
+    width_px: int,
+    height_px: int,
+    league_logo_path: Path | None = None,
+    league_logo_corner: str = "none",
+) -> Image.Image:
+    card = Image.new("RGB", (width_px, height_px), color="white")
     with Image.open(source_logo).convert("RGBA") as logo_rgba:
         max_logo_width = int(width_px * 0.8)
         max_logo_height = int(height_px * 0.8)
@@ -280,6 +287,8 @@ def _build_logo_card(source_logo: Path, width_px: int, height_px: int) -> Image.
         x = (width_px - resized_logo.width) // 2
         y = (height_px - resized_logo.height) // 2
         card.paste(resized_logo, (x, y), resized_logo)
+    if league_logo_path and league_logo_corner != "none":
+        _overlay_league_logo(card, league_logo_path, league_logo_corner)
     return card
 
 
