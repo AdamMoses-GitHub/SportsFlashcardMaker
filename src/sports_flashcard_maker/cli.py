@@ -12,7 +12,7 @@ from .teams import FLASHCARD_SETS
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
     parser = argparse.ArgumentParser(
-        description="Download team logos and format them as 6x4 front/back flashcards."
+        description="Download team logos and generate print-ready flashcard images."
     )
     parser.add_argument(
         "--set",
@@ -52,41 +52,34 @@ def parse_args() -> argparse.Namespace:
         dest="filename_format",
         choices=["prefix", "suffix"],
         default="prefix",
-        help="How to format filenames: 'prefix' (front_XXX.png) or 'suffix' (XXX_front.png).",
-    )
-    parser.add_argument(
-        "--side-labels",
-        dest="side_labels",
-        choices=["front_back", "logo_text"],
-        default="front_back",
-        help="Filename side labels: 'front_back' or 'logo_text'.",
+        help="How to format filenames: 'prefix' (CARDTYPE_TEAMTEXT.png) or 'suffix' (TEAMTEXT_CARDTYPE.png).",
     )
     parser.add_argument(
         "--name-format",
         dest="name_format",
         choices=["full", "team_only", "city_only"],
         default="full",
-        help="What to include in filenames and back-side text: 'full' (city+team), 'team_only', or 'city_only'.",
+        help="What to include in card text and filenames: 'full' (city+team), 'team_only', or 'city_only'.",
     )
     parser.add_argument(
-        "--name-order",
-        dest="name_order",
-        choices=["city_first", "team_first"],
-        default="city_first",
-        help="Order for 'full' format: 'city_first' (San Francisco 49ers) or 'team_first' (49ers San Francisco).",
+        "--card-types",
+        dest="card_types",
+        nargs="+",
+        choices=["logo", "text", "combo"],
+        default=["logo", "text"],
+        help="Card types to generate: any combination of 'logo', 'text', 'combo'. Defaults to logo text.",
     )
     parser.add_argument(
-        "--card-output-mode",
-        dest="card_output_mode",
-        choices=["logo_text", "logo_only", "text_only", "combined"],
-        default="logo_text",
-        help="Output mode: both cards ('logo_text'), logo only, text only, or a combined logo+text card.",
+        "--text-color",
+        dest="text_color",
+        default="black",
+        help="Text color when split text colors is disabled (hex or named color).",
     )
     parser.add_argument(
         "--split-text-colors",
         dest="split_text_colors",
         action="store_true",
-        help="Render location and team name in different colors on the back text (full-name mode).",
+        help="Render location and team name in different colors on text cards (full-name mode).",
     )
     parser.add_argument(
         "--location-color",
@@ -99,6 +92,13 @@ def parse_args() -> argparse.Namespace:
         dest="team_color",
         default="#b22222",
         help="Team text color when --split-text-colors is enabled (hex or named color).",
+    )
+    parser.add_argument(
+        "--league-logo-corner",
+        dest="league_logo_corner",
+        choices=["none", "top-left", "top-right", "bottom-left", "bottom-right"],
+        default="none",
+        help="Overlay the league/conference logo in a corner of every card. Defaults to none (disabled).",
     )
     return parser.parse_args()
 
@@ -116,13 +116,13 @@ def cli_main() -> None:
             dpi=args.dpi,
             card_ratio=args.card_ratio,
             filename_format=args.filename_format,
-            side_labels=args.side_labels,
             name_format=args.name_format,
-            name_order=args.name_order,
-            card_output_mode=args.card_output_mode,
+            card_types=set(args.card_types),
             split_text_colors=args.split_text_colors,
             location_color=args.location_color,
             team_color=args.team_color,
+            text_color=args.text_color,
+            league_logo_corner=args.league_logo_corner,
         )
 
         if result["status"] == "error":
@@ -142,13 +142,13 @@ def cli_main() -> None:
         dpi=args.dpi,
         card_ratio=args.card_ratio,
         filename_format=args.filename_format,
-        side_labels=args.side_labels,
         name_format=args.name_format,
-        name_order=args.name_order,
-        card_output_mode=args.card_output_mode,
+        card_types=set(args.card_types),
         split_text_colors=args.split_text_colors,
         location_color=args.location_color,
         team_color=args.team_color,
+        text_color=args.text_color,
+        league_logo_corner=args.league_logo_corner,
     )
 
     print(

@@ -122,11 +122,9 @@ sports-flashcards --set mlb nfl nba nhl
 | `--logos-dir` | `data/logos_raw` | Logo download/cache folder |
 | `--dpi` | `300` | Image DPI |
 | `--card-ratio` | `3x2` | Card size ratio (see table below) |
-| `--card-output-mode` | `logo_text` | `logo_text`, `logo_only`, `text_only`, or `combined` |
-| `--filename-format` | `prefix` | `prefix` (LABEL_TEAM.png) or `suffix` (TEAM_LABEL.png) |
-| `--side-labels` | `front_back` | `front_back` or `logo_text` |
+| `--card-types` | `logo text` | One or more of `logo`, `text`, `combo` |
+| `--filename-format` | `prefix` | `prefix` (CARDTYPE_TEAM.png) or `suffix` (TEAM_CARDTYPE.png) |
 | `--name-format` | `full` | `full`, `team_only`, or `city_only` |
-| `--name-order` | `city_first` | `city_first` or `team_first` (full format only) |
 | `--split-text-colors` | off | Render location and team name in different colors on back |
 | `--location-color` | `#1f4e79` | Location text color when split colors are on |
 | `--team-color` | `#b22222` | Team text color when split colors are on |

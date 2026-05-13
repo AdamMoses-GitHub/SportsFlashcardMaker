@@ -14,7 +14,6 @@ from .teams import (
     split_team_name,
     format_team_name,
     format_filename,
-    format_output_filenames,
 )
 
 
@@ -170,12 +169,12 @@ def _draw_team_text_region(
     region_height_px: int,
     top_offset_px: int,
     name_format: str,
-    name_order: str,
     split_text_colors: bool,
     location_color: str,
     team_color: str,
+    text_color: str = "black",
 ) -> None:
-    back_text = format_team_name(team, name_format, name_order)
+    back_text = format_team_name(team, name_format)
     use_split = split_text_colors and name_format == "full"
 
     if use_split:
@@ -185,9 +184,6 @@ def _draw_team_text_region(
 
         if not location or not team_name or location.lower() == team_name.lower():
             use_split = False
-        elif name_order == "team_first":
-            first_text, first_color = team_name, team_color
-            second_text, second_color = location, location_color
         else:
             first_text, first_color = location, location_color
             second_text, second_color = team_name, team_color
@@ -239,12 +235,44 @@ def _draw_team_text_region(
 
         for line, (line_width, line_height) in zip(lines, line_sizes):
             x = (width_px - line_width) // 2
-            draw.text((x, y), line, fill="black", font=font)
+            draw.text((x, y), line, fill=text_color, font=font)
             y += line_height + spacing
 
 
-def _build_logo_card(source_logo: Path, width_px: int, height_px: int) -> Image.Image:
-    card = Image.new("RGB", (width_px, height_px), color="white")
+def _overlay_league_logo(
+    card: Image.Image,
+    league_logo_path: Path,
+    corner: str,
+    size_fraction: float = 0.15,
+) -> None:
+    """Composite a league/conference logo watermark into a corner of the card."""
+    card_w, card_h = card.size
+    overlay_size = int(min(card_w, card_h) * size_fraction)
+    margin = int(min(card_w, card_h) * 0.03)
+
+    try:
+        with Image.open(league_logo_path).convert("RGBA") as logo_rgba:
+            resized = ImageOps.contain(logo_rgba, (overlay_size, overlay_size))
+            w, h = resized.size
+            if corner == "top-left":
+                x, y = margin, margin
+            elif corner == "top-right":
+                x, y = card_w - w - margin, margin
+            elif corner == "bottom-left":
+                x, y = margin, card_h - h - margin
+            else:  # bottom-right
+                x, y = card_w - w - margin, card_h - h - margin
+
+            # Reduce opacity for a subtle watermark effect
+            r, g, b, a = resized.split()
+            a = a.point(lambda i: int(i * 0.65))
+            resized = Image.merge("RGBA", (r, g, b, a))
+            card.paste(resized, (x, y), resized)
+    except Exception:
+        pass  # Never let a missing/corrupt league logo crash card generation
+
+
+def _build_logo_card(source_logo: Path, width_px: int, height_px: int) -> Image.Image:    card = Image.new("RGB", (width_px, height_px), color="white")
     with Image.open(source_logo).convert("RGBA") as logo_rgba:
         max_logo_width = int(width_px * 0.8)
         max_logo_height = int(height_px * 0.8)
@@ -260,10 +288,12 @@ def _build_text_card(
     width_px: int,
     height_px: int,
     name_format: str,
-    name_order: str,
     split_text_colors: bool,
     location_color: str,
     team_color: str,
+    text_color: str = "black",
+    league_logo_path: Path | None = None,
+    league_logo_corner: str = "none",
 ) -> Image.Image:
     card = Image.new("RGB", (width_px, height_px), color="white")
     draw = ImageDraw.Draw(card)
@@ -274,11 +304,13 @@ def _build_text_card(
         height_px,
         0,
         name_format,
-        name_order,
         split_text_colors,
         location_color,
         team_color,
+        text_color,
     )
+    if league_logo_path and league_logo_corner != "none":
+        _overlay_league_logo(card, league_logo_path, league_logo_corner)
     return card
 
 
@@ -288,10 +320,12 @@ def _build_combined_card(
     width_px: int,
     height_px: int,
     name_format: str,
-    name_order: str,
     split_text_colors: bool,
     location_color: str,
     team_color: str,
+    text_color: str = "black",
+    league_logo_path: Path | None = None,
+    league_logo_corner: str = "none",
 ) -> Image.Image:
     card = Image.new("RGB", (width_px, height_px), color="white")
     draw = ImageDraw.Draw(card)
@@ -323,12 +357,14 @@ def _build_combined_card(
         footer_height,
         footer_top,
         name_format,
-        name_order,
         split_text_colors,
         location_color,
         team_color,
+        text_color,
     )
 
+    if league_logo_path and league_logo_corner != "none":
+        _overlay_league_logo(card, league_logo_path, league_logo_corner)
     return card
 
 
@@ -340,15 +376,18 @@ def build_flashcards(
     inches: tuple[int, int] = (6, 4),
     filename_format: str = "prefix",
     name_format: str = "full",
-    name_order: str = "city_first",
-    side_labels: str = "front_back",
+    card_types: set[str] | None = None,
     split_text_colors: bool = False,
     location_color: str = "#1f4e79",
     team_color: str = "#b22222",
-    card_output_mode: str = "logo_text",
+    text_color: str = "black",
+    league_logo_path: Path | None = None,
+    league_logo_corner: str = "none",
     progress_callback: Callable[[str], None] | None = None,
 ) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
+    if card_types is None:
+        card_types = {"logo", "text"}
 
     width_px = inches[0] * dpi
     height_px = inches[1] * dpi
@@ -370,54 +409,60 @@ def build_flashcards(
         if legacy_single_side.exists():
             legacy_single_side.unlink()
 
-        output_stems = format_output_filenames(
+        logo_name, text_name, combo_name = format_filename(
             team,
             filename_format=filename_format,
             name_format=name_format,
-            name_order=name_order,
-            side_labels=side_labels,
-            card_output_mode=card_output_mode,
         )
 
         created_for_team: list[str] = []
 
-        if card_output_mode in {"logo_text", "logo_only"}:
-            logo_card = _build_logo_card(source_logo, width_px, height_px)
-            logo_destination = output_dir / f"{output_stems[0]}.png"
+        if "logo" in card_types:
+            logo_card = _build_logo_card(
+                source_logo,
+                width_px,
+                height_px,
+                league_logo_path=league_logo_path,
+                league_logo_corner=league_logo_corner,
+            )
+            logo_destination = output_dir / f"{logo_name}.png"
             logo_card.save(logo_destination, dpi=(dpi, dpi))
             created_cards.append(logo_destination)
             created_for_team.append(logo_destination.name)
 
-        if card_output_mode in {"logo_text", "text_only"}:
-            text_stem = output_stems[1] if card_output_mode == "logo_text" else output_stems[0]
+        if "text" in card_types:
             text_card = _build_text_card(
                 team,
                 width_px,
                 height_px,
                 name_format,
-                name_order,
                 split_text_colors,
                 location_color,
                 team_color,
+                text_color,
+                league_logo_path=league_logo_path,
+                league_logo_corner=league_logo_corner,
             )
-            text_destination = output_dir / f"{text_stem}.png"
+            text_destination = output_dir / f"{text_name}.png"
             text_card.save(text_destination, dpi=(dpi, dpi))
             created_cards.append(text_destination)
             created_for_team.append(text_destination.name)
 
-        if card_output_mode == "combined":
+        if "combo" in card_types:
             combined_card = _build_combined_card(
                 team,
                 source_logo,
                 width_px,
                 height_px,
                 name_format,
-                name_order,
                 split_text_colors,
                 location_color,
                 team_color,
+                text_color,
+                league_logo_path=league_logo_path,
+                league_logo_corner=league_logo_corner,
             )
-            combined_destination = output_dir / f"{output_stems[0]}.png"
+            combined_destination = output_dir / f"{combo_name}.png"
             combined_card.save(combined_destination, dpi=(dpi, dpi))
             created_cards.append(combined_destination)
             created_for_team.append(combined_destination.name)

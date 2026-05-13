@@ -26,6 +26,7 @@ class FlashcardSet:
     source_api_endpoint: str | None
     output_folder: str
     teams: tuple[Team, ...]
+    league_logo_url: str | None = None
 
 
 def normalize_team_name(name: str) -> str:
@@ -251,6 +252,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint=None,
         output_folder="MLB",
         teams=MLB_TEAMS,
+        league_logo_url="https://a.espncdn.com/i/teamlogos/leagues/500/mlb.png",
     ),
     "acc": FlashcardSet(
         code="acc",
@@ -260,6 +262,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint=CFB_TEAMS_ENDPOINT,
         output_folder="ACC",
         teams=ACC_TEAMS,
+        league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/acc.png",
     ),
     "big_ten": FlashcardSet(
         code="big_ten",
@@ -269,6 +272,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint=CFB_TEAMS_ENDPOINT,
         output_folder="BIG_TEN",
         teams=BIG_TEN_TEAMS,
+        league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/big_ten.png",
     ),
     "big_12": FlashcardSet(
         code="big_12",
@@ -278,6 +282,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint=CFB_TEAMS_ENDPOINT,
         output_folder="BIG_12",
         teams=BIG_12_TEAMS,
+        league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/big12.png",
     ),
     "sec": FlashcardSet(
         code="sec",
@@ -287,6 +292,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint=CFB_TEAMS_ENDPOINT,
         output_folder="SEC",
         teams=SEC_TEAMS,
+        league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/sec.png",
     ),
     "mac": FlashcardSet(
         code="mac",
@@ -296,6 +302,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint=CFB_TEAMS_ENDPOINT,
         output_folder="MAC",
         teams=MAC_TEAMS,
+        league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/mac.png",
     ),
     "aac": FlashcardSet(
         code="aac",
@@ -305,6 +312,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint=CFB_TEAMS_ENDPOINT,
         output_folder="AAC",
         teams=AAC_TEAMS,
+        league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/aac.png",
     ),
     "ivy_league": FlashcardSet(
         code="ivy_league",
@@ -314,6 +322,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint=CFB_TEAMS_ENDPOINT,
         output_folder="IVY_LEAGUE",
         teams=IVY_LEAGUE_TEAMS,
+        league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/ivy.png",
     ),
     "pac_12": FlashcardSet(
         code="pac_12",
@@ -323,6 +332,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint=CFB_TEAMS_ENDPOINT,
         output_folder="PAC_12",
         teams=PAC_12_TEAMS,
+        league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/pac12.png",
     ),
     "nfl": FlashcardSet(
         code="nfl",
@@ -332,6 +342,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams?limit=200",
         output_folder="NFL",
         teams=(),
+        league_logo_url="https://a.espncdn.com/i/teamlogos/leagues/500/nfl.png",
     ),
     "nba": FlashcardSet(
         code="nba",
@@ -341,6 +352,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams?limit=200",
         output_folder="NBA",
         teams=(),
+        league_logo_url="https://a.espncdn.com/i/teamlogos/leagues/500/nba.png",
     ),
     "nhl": FlashcardSet(
         code="nhl",
@@ -350,6 +362,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams?limit=200",
         output_folder="NHL",
         teams=(),
+        league_logo_url="https://a.espncdn.com/i/teamlogos/leagues/500/nhl.png",
     ),
     "wnba": FlashcardSet(
         code="wnba",
@@ -359,6 +372,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams?limit=200",
         output_folder="WNBA",
         teams=(),
+        league_logo_url="https://a.espncdn.com/i/teamlogos/leagues/500/wnba.png",
     ),
     "mls": FlashcardSet(
         code="mls",
@@ -368,6 +382,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/teams?limit=200",
         output_folder="MLS",
         teams=(),
+        league_logo_url="https://a.espncdn.com/i/teamlogos/leagues/500/mls.png",
     ),
     "epl": FlashcardSet(
         code="epl",
@@ -413,6 +428,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/teams?limit=200",
         output_folder="NWSL",
         teams=(),
+        league_logo_url="https://a.espncdn.com/i/teamlogos/leagues/500/nwsl.png",
     ),
     "ufl": FlashcardSet(
         code="ufl",
@@ -422,6 +438,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/football/ufl/teams?limit=200",
         output_folder="UFL",
         teams=(),
+        league_logo_url="https://a.espncdn.com/i/teamlogos/leagues/500/ufl.png",
     ),
 }
 
@@ -502,7 +519,6 @@ def split_team_name(team: Team) -> tuple[str, str]:
 def format_team_name(
     team: Team,
     name_format: str = "full",
-    name_order: str = "city_first",
 ) -> str:
     """
     Format a team name according to config options.
@@ -510,7 +526,6 @@ def format_team_name(
     Args:
         team: The team object
         name_format: "full" (city+team), "city_only", or "team_only"
-        name_order: "city_first" or "team_first" (only used for "full")
     
     Returns:
         Formatted team name string
@@ -525,10 +540,7 @@ def format_team_name(
         location, team_name = split_team_name(team)
         if location.strip().lower() == team_name.strip().lower():
             return location.strip()
-        if name_order == "team_first":
-            return f"{team_name} {location}".strip()
-        else:  # city_first
-            return f"{location} {team_name}".strip()
+        return f"{location} {team_name}".strip()
     else:
         return team.name
 
@@ -537,65 +549,56 @@ def format_filename(
     team: Team,
     filename_format: str = "prefix",
     name_format: str = "full",
-    name_order: str = "city_first",
-    side_labels: str = "front_back",
-) -> tuple[str, str]:
+) -> tuple[str, str, str]:
     """
-    Generate front and back filenames according to config.
-    
+    Generate logo, text, and combo filename stems for a team.
+
     Args:
         team: The team object
         filename_format: "prefix" or "suffix"
         name_format: "full", "city_only", or "team_only"
-        name_order: "city_first" or "team_first"
-        side_labels: "front_back" or "logo_text"
-    
+
     Returns:
-        Tuple of (front_filename, back_filename) without extension
+        Tuple of (logo_stem, text_stem, combo_stem) without extension
     """
-    # Get the formatted name and convert to filename-safe slug
-    formatted_name = format_team_name(team, name_format, name_order)
+    formatted_name = format_team_name(team, name_format)
     stem = re.sub(r"[^a-z0-9]+", "_", formatted_name.lower()).strip("_")
-    
-    if side_labels == "logo_text":
-        first_label, second_label = "logo", "text"
-    else:
-        first_label, second_label = "front", "back"
 
     if filename_format == "suffix":
-        return f"{stem}_{first_label}", f"{stem}_{second_label}"
+        return f"{stem}_logo", f"{stem}_text", f"{stem}_combo"
     else:  # prefix (default)
-        return f"{first_label}_{stem}", f"{second_label}_{stem}"
+        return f"logo_{stem}", f"text_{stem}", f"combo_{stem}"
 
 
 def format_output_filenames(
     team: Team,
     filename_format: str = "prefix",
     name_format: str = "full",
-    name_order: str = "city_first",
-    side_labels: str = "front_back",
-    card_output_mode: str = "logo_text",
+    card_types: set[str] | None = None,
 ) -> list[str]:
-    """Generate the output filename stems for the selected card output mode."""
-    front_name, back_name = format_filename(
+    """Generate output filename stems for the selected card types.
+
+    Args:
+        card_types: Set of types to include — any of "logo", "text", "combo".
+                    Defaults to {"logo", "text"}.
+
+    Returns:
+        Filename stems in order: logo first, text second, combo third.
+    """
+    if card_types is None:
+        card_types = {"logo", "text"}
+
+    logo_name, text_name, combo_name = format_filename(
         team,
         filename_format=filename_format,
         name_format=name_format,
-        name_order=name_order,
-        side_labels=side_labels,
     )
 
-    if card_output_mode == "logo_text":
-        return [front_name, back_name]
-    if card_output_mode == "logo_only":
-        return [front_name]
-    if card_output_mode == "text_only":
-        return [back_name]
-    if card_output_mode == "combined":
-        formatted_name = format_team_name(team, name_format, name_order)
-        stem = re.sub(r"[^a-z0-9]+", "_", formatted_name.lower()).strip("_")
-        return [f"{stem}_combo" if filename_format == "suffix" else f"combo_{stem}"]
-
-    raise ValueError(
-        "Invalid card_output_mode. Choose one of: logo_text, logo_only, text_only, combined"
-    )
+    result: list[str] = []
+    if "logo" in card_types:
+        result.append(logo_name)
+    if "text" in card_types:
+        result.append(text_name)
+    if "combo" in card_types:
+        result.append(combo_name)
+    return result

@@ -20,13 +20,13 @@ def _write_set_readme(
     dpi: int,
     card_ratio: str,
     filename_format: str,
-    side_labels: str,
     name_format: str,
-    name_order: str,
-    card_output_mode: str,
+    card_types: set[str],
     split_text_colors: bool,
     location_color: str,
     team_color: str,
+    text_color: str,
+    league_logo_corner: str,
     warnings: list[str],
 ) -> None:
     team_lines: list[str] = []
@@ -37,9 +37,7 @@ def _write_set_readme(
             team,
             filename_format=filename_format,
             name_format=name_format,
-            name_order=name_order,
-            side_labels=side_labels,
-            card_output_mode=card_output_mode,
+            card_types=card_types,
         )
         team_lines.append(f"- {team.name}")
         for output_name in output_names:
@@ -63,13 +61,13 @@ def _write_set_readme(
             f"- DPI: {dpi}",
             f"- Card ratio: {card_ratio}",
             f"- Filename format: {filename_format}",
-            f"- Side labels: {side_labels}",
-            f"- Card output mode: {card_output_mode}",
+            f"- Card types: {', '.join(sorted(card_types))}",
             f"- Name format: {name_format}",
-            f"- Name order: {name_order}",
             f"- Split text colors: {'on' if split_text_colors else 'off'}",
             f"- Location color: {location_color}",
             f"- Team color: {team_color}",
+            f"- Text color: {text_color}",
+            f"- League logo overlay: {league_logo_corner}",
             "",
             "## Teams And Created Files",
             *team_lines,
@@ -96,13 +94,13 @@ def generate_flashcards(
     dpi: int = 300,
     card_ratio: str = "3x2",
     filename_format: str = "prefix",
-    side_labels: str = "front_back",
     name_format: str = "full",
-    name_order: str = "city_first",
-    card_output_mode: str = "logo_text",
+    card_types: set[str] | None = None,
     split_text_colors: bool = False,
     location_color: str = "#1f4e79",
     team_color: str = "#b22222",
+    text_color: str = "black",
+    league_logo_corner: str = "none",
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict[str, object]:
     """
@@ -114,11 +112,9 @@ def generate_flashcards(
         logos_dir: Where to download/cache logos. Defaults to data/logos_raw/
         dpi: DPI for saved PNG files. Defaults to 300.
         card_ratio: Flashcard aspect ratio: "1x1", "3x2", or "2x3". Defaults to "3x2".
-        filename_format: "prefix" (front_XXX.png) or "suffix" (XXX_front.png). Defaults to "prefix".
-        side_labels: Filename side labels: "front_back" or "logo_text". Defaults to "front_back".
+        filename_format: "prefix" (logo_XXX.png) or "suffix" (XXX_logo.png). Defaults to "prefix".
         name_format: "full" (city+team), "city_only", or "team_only". Defaults to "full".
-        name_order: "city_first" or "team_first" (only used for "full"). Defaults to "city_first".
-        card_output_mode: "logo_text", "logo_only", "text_only", or "combined".
+        card_types: Set of card types to generate: "logo", "text", "combo". Defaults to {"logo", "text"}.
         split_text_colors: When true, render location/team in different colors on back text for full-name mode.
         location_color: Color for location part when split colors are enabled.
         team_color: Color for team part when split colors are enabled.
@@ -167,7 +163,7 @@ def generate_flashcards(
         # Download logos
         if progress_callback:
             progress_callback("  Resolving teams and downloading logos...")
-        downloaded_files, resolved_teams, download_warnings = download_logos(
+        downloaded_files, resolved_teams, download_warnings, league_logo_path = download_logos(
             team_set,
             logos_dir,
             progress_callback=progress_callback,
@@ -191,13 +187,14 @@ def generate_flashcards(
             dpi=dpi,
             inches=card_inches,
             filename_format=filename_format,
-            side_labels=side_labels,
             name_format=name_format,
-            name_order=name_order,
-            card_output_mode=card_output_mode,
+            card_types=card_types,
             split_text_colors=split_text_colors,
             location_color=location_color,
             team_color=team_color,
+            text_color=text_color,
+            league_logo_path=league_logo_path,
+            league_logo_corner=league_logo_corner,
             progress_callback=progress_callback,
         )
         if progress_callback:
@@ -234,13 +231,13 @@ def generate_flashcards(
             dpi=dpi,
             card_ratio=card_ratio,
             filename_format=filename_format,
-            side_labels=side_labels,
             name_format=name_format,
-            name_order=name_order,
-            card_output_mode=card_output_mode,
+            card_types=card_types if card_types is not None else {"logo", "text"},
             split_text_colors=split_text_colors,
             location_color=location_color,
             team_color=team_color,
+            text_color=text_color,
+            league_logo_corner=league_logo_corner,
             warnings=warnings,
         )
         if progress_callback:
@@ -272,13 +269,13 @@ def generate_flashcards_batch(
     dpi: int = 300,
     card_ratio: str = "3x2",
     filename_format: str = "prefix",
-    side_labels: str = "front_back",
     name_format: str = "full",
-    name_order: str = "city_first",
-    card_output_mode: str = "logo_text",
+    card_types: set[str] | None = None,
     split_text_colors: bool = False,
     location_color: str = "#1f4e79",
     team_color: str = "#b22222",
+    text_color: str = "black",
+    league_logo_corner: str = "none",
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict[str, object]:
     """Generate flashcards for multiple sets in sequence."""
@@ -317,13 +314,13 @@ def generate_flashcards_batch(
             dpi=dpi,
             card_ratio=card_ratio,
             filename_format=filename_format,
-            side_labels=side_labels,
             name_format=name_format,
-            name_order=name_order,
-            card_output_mode=card_output_mode,
+            card_types=card_types,
             split_text_colors=split_text_colors,
             location_color=location_color,
             team_color=team_color,
+            text_color=text_color,
+            league_logo_corner=league_logo_corner,
             progress_callback=progress_callback,
         )
         results.append(result)

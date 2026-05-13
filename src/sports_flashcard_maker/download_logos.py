@@ -77,7 +77,7 @@ def download_logos(
     team_set: FlashcardSet,
     output_dir: Path,
     progress_callback: Callable[[str], None] | None = None,
-) -> tuple[list[Path], tuple[Team, ...], list[str]]:
+) -> tuple[list[Path], tuple[Team, ...], list[str], Path | None]:
     """Download logos and return (downloaded_files, resolved_teams, warnings)."""
     output_dir.mkdir(parents=True, exist_ok=True)
     downloaded_files: list[Path] = []
@@ -184,4 +184,25 @@ def download_logos(
                 + (f" (and {len(skipped_teams) - 3} more)" if len(skipped_teams) > 3 else "")
             )
 
-    return downloaded_files, resolved_teams, warnings
+        # Download league / conference logo (non-fatal; skip on any error)
+        league_logo_path: Path | None = None
+        if team_set.league_logo_url:
+            league_logo_dest = output_dir / f"_league_{team_set.code}.png"
+            if league_logo_dest.exists():
+                league_logo_path = league_logo_dest
+            else:
+                try:
+                    if progress_callback:
+                        progress_callback("  Downloading league logo...")
+                    response = session.get(team_set.league_logo_url, timeout=TIMEOUT_SECONDS)
+                    response.raise_for_status()
+                    league_logo_dest.write_bytes(response.content)
+                    league_logo_path = league_logo_dest
+                    if progress_callback:
+                        progress_callback(f"      Saved league logo: {league_logo_dest.name}")
+                except Exception as exc:
+                    warnings.append(
+                        f"League logo download failed (overlay will be skipped): {str(exc)[:80]}"
+                    )
+
+    return downloaded_files, resolved_teams, warnings, league_logo_path
