@@ -498,7 +498,17 @@ def split_team_name(team: Team) -> tuple[str, str]:
         team_name = " ".join(parts[-2:])
         location = " ".join(parts[:-2])
         return location, team_name
-    
+
+    # Known compound (two-word) mascot names — mainly needed for hardcoded teams
+    # that lack location_name/mascot_name fields (e.g. static MLB definitions).
+    two_word_mascots = {
+        "white sox", "red sox", "blue jays",         # MLB
+        "blue jackets", "maple leafs", "red wings",  # NHL (fallback)
+        "golden knights", "golden state",            # NHL/NBA (fallback)
+    }
+    if len(parts) >= 3 and " ".join(parts[-2:]).lower() in two_word_mascots:
+        return " ".join(parts[:-2]), " ".join(parts[-2:])
+
     # Default: assume last word is team name, everything else is location
     team_name = parts[-1]
     location = " ".join(parts[:-1])
