@@ -67,10 +67,12 @@ def _fit_back_text_layout(
     team_name: str,
     width_px: int,
     height_px: int,
+    size_scale: float = 1.0,
 ) -> tuple[ImageFont.ImageFont, list[str], int]:
     """Fit back text within safe margins: 8% top/bottom = 84% usable height.
     
     Uses conservative 92% safety factor on max_height to prevent overflow.
+    size_scale shrinks the allowed height budget so text renders smaller.
     """
     canvas = Image.new("RGB", (width_px, height_px), color="white")
     draw = ImageDraw.Draw(canvas)
@@ -80,8 +82,8 @@ def _fit_back_text_layout(
     margin_vertical = int(height_px * 0.08)
     max_width = width_px - (2 * margin_horizontal)  # 84% width
     max_height_base = height_px - (2 * margin_vertical)  # 84% height
-    # Apply safety factor: use 92% of max_height to prevent overflow with varied font rendering
-    max_height = int(max_height_base * 0.92)
+    # Apply safety factor then scale
+    max_height = int(max_height_base * 0.92 * size_scale)
 
     # Try font sizes with finer stepping for better fit precision
     for font_size in range(int(height_px * 0.40), 11, -1):
@@ -109,10 +111,12 @@ def _fit_two_block_text_layout(
     second_text: str,
     width_px: int,
     height_px: int,
+    size_scale: float = 1.0,
 ) -> tuple[ImageFont.ImageFont, list[str], list[str], int]:
     """Fit two text blocks (location/team) for optional split-color rendering.
     
     Uses conservative 92% safety factor on max_height to prevent overflow.
+    size_scale shrinks the allowed height budget so text renders smaller.
     """
     canvas = Image.new("RGB", (width_px, height_px), color="white")
     draw = ImageDraw.Draw(canvas)
@@ -123,8 +127,8 @@ def _fit_two_block_text_layout(
     margin_vertical = int(height_px * 0.08)
     max_width = width_px - (2 * margin_horizontal)  # 84% width
     max_height_base = height_px - (2 * margin_vertical)  # 84% height
-    # Apply safety factor: use 92% of max_height to prevent overflow with varied font rendering
-    max_height = int(max_height_base * 0.92)
+    # Apply safety factor then scale
+    max_height = int(max_height_base * 0.92 * size_scale)
 
     # Try font sizes with finer stepping for better fit precision
     for font_size in range(int(height_px * 0.28), 11, -1):
@@ -173,6 +177,7 @@ def _draw_team_text_region(
     location_color: str,
     team_color: str,
     text_color: str = "black",
+    size_scale: float = 1.0,
 ) -> None:
     back_text = format_team_name(team, name_format)
     use_split = split_text_colors and name_format == "full"
@@ -194,6 +199,7 @@ def _draw_team_text_region(
             second_text,
             width_px,
             region_height_px,
+            size_scale=size_scale,
         )
 
         first_sizes = [_text_size(draw, line, font) for line in first_lines]
@@ -224,7 +230,7 @@ def _draw_team_text_region(
                 y += line_height + spacing
 
     if not use_split:
-        font, lines, spacing = _fit_back_text_layout(back_text, width_px, region_height_px)
+        font, lines, spacing = _fit_back_text_layout(back_text, width_px, region_height_px, size_scale=size_scale)
         line_sizes = [_text_size(draw, line, font) for line in lines]
         total_height = sum(h for _, h in line_sizes) + spacing * (len(lines) - 1)
 
@@ -303,7 +309,10 @@ def _build_text_card(
     text_color: str = "black",
     league_logo_path: Path | None = None,
     league_logo_corner: str = "none",
+    text_size: str = "large",
 ) -> Image.Image:
+    _TEXT_SIZE_SCALES = {"large": 1.0, "medium": 0.65, "small": 0.45}
+    size_scale = _TEXT_SIZE_SCALES.get(text_size, 1.0)
     card = Image.new("RGB", (width_px, height_px), color="white")
     draw = ImageDraw.Draw(card)
     _draw_team_text_region(
@@ -317,6 +326,7 @@ def _build_text_card(
         location_color,
         team_color,
         text_color,
+        size_scale=size_scale,
     )
     if league_logo_path and league_logo_corner != "none":
         _overlay_league_logo(card, league_logo_path, league_logo_corner)
@@ -390,6 +400,7 @@ def build_flashcards(
     location_color: str = "#1f4e79",
     team_color: str = "#b22222",
     text_color: str = "black",
+    text_size: str = "large",
     league_logo_path: Path | None = None,
     league_logo_corner: str = "none",
     progress_callback: Callable[[str], None] | None = None,
@@ -451,6 +462,7 @@ def build_flashcards(
                 text_color,
                 league_logo_path=league_logo_path,
                 league_logo_corner=league_logo_corner,
+                text_size=text_size,
             )
             text_destination = output_dir / f"{text_name}.png"
             text_card.save(text_destination, dpi=(dpi, dpi))

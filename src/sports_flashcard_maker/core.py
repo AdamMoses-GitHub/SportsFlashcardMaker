@@ -26,6 +26,7 @@ def _write_set_readme(
     location_color: str,
     team_color: str,
     text_color: str,
+    text_size: str,
     league_logo_corner: str,
     warnings: list[str],
 ) -> None:
@@ -67,6 +68,7 @@ def _write_set_readme(
             f"- Location color: {location_color}",
             f"- Team color: {team_color}",
             f"- Text color: {text_color}",
+            f"- Text size: {text_size}",
             f"- League logo overlay: {league_logo_corner}",
             "",
             "## Teams And Created Files",
@@ -100,6 +102,7 @@ def generate_flashcards(
     location_color: str = "#1f4e79",
     team_color: str = "#b22222",
     text_color: str = "black",
+    text_size: str = "large",
     league_logo_corner: str = "none",
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict[str, object]:
@@ -193,6 +196,7 @@ def generate_flashcards(
             location_color=location_color,
             team_color=team_color,
             text_color=text_color,
+            text_size=text_size,
             league_logo_path=league_logo_path,
             league_logo_corner=league_logo_corner,
             progress_callback=progress_callback,
@@ -237,6 +241,7 @@ def generate_flashcards(
             location_color=location_color,
             team_color=team_color,
             text_color=text_color,
+            text_size=text_size,
             league_logo_corner=league_logo_corner,
             warnings=warnings,
         )
@@ -275,6 +280,7 @@ def generate_flashcards_batch(
     location_color: str = "#1f4e79",
     team_color: str = "#b22222",
     text_color: str = "black",
+    text_size: str = "large",
     league_logo_corner: str = "none",
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict[str, object]:
@@ -320,6 +326,7 @@ def generate_flashcards_batch(
             location_color=location_color,
             team_color=team_color,
             text_color=text_color,
+            text_size=text_size,
             league_logo_corner=league_logo_corner,
             progress_callback=progress_callback,
         )

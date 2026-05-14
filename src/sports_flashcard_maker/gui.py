@@ -409,6 +409,36 @@ class FlashcardGeneratorGUI:
         )
         self.color_hint_label.pack(anchor="w", pady=(6, 0))
 
+        ttk.Label(
+            colors_frame,
+            text=(
+                "Note: soccer sets do not split location and team name, so only the "
+                "Text color is used for those cards regardless of the split colors setting."
+            ),
+            foreground="#888",
+            wraplength=520,
+            justify="left",
+        ).pack(anchor="w", pady=(4, 0))
+
+        ttk.Separator(colors_frame, orient="horizontal").pack(fill="x", pady=(10, 6))
+
+        size_row = ttk.Frame(colors_frame)
+        size_row.pack(anchor="w")
+        ttk.Label(size_row, text="Text card font size:").pack(side="left", padx=(0, 10))
+        self.text_size_var = tk.StringVar(value="large")
+        for label, value in (("Large", "large"), ("Medium", "medium"), ("Small", "small")):
+            ttk.Radiobutton(
+                size_row,
+                text=label,
+                variable=self.text_size_var,
+                value=value,
+            ).pack(side="left", padx=(0, 8))
+        ttk.Label(
+            colors_frame,
+            text="Applies to text-only cards. Large fills the card; smaller sizes leave more white space.",
+            foreground="#555",
+        ).pack(anchor="w", pady=(2, 0))
+
         # League Logo Overlay
         overlay_frame = ttk.LabelFrame(settings_tab, text="League Logo Overlay", padding=10)
         overlay_frame.pack(fill="x", pady=(8, 0))
@@ -524,6 +554,7 @@ class FlashcardGeneratorGUI:
             self.text_color_var,
             self.location_color_var,
             self.team_color_var,
+            self.text_size_var,
             self.card_type_logo_var,
             self.card_type_text_var,
             self.card_type_combo_var,
@@ -608,17 +639,9 @@ class FlashcardGeneratorGUI:
             else:
                 self.split_color_policy_label.config(text="")
 
-        enabled = (
-            text_is_rendered
-            and not forced_off
-            and self.split_text_colors_var.get()
-            and self.name_format_var.get() == "full"
-        )
-        state = "normal" if enabled else "disabled"
-        self.location_color_entry.config(state=state)
-        self.team_color_entry.config(state=state)
-        text_color_state = "normal" if (text_is_rendered and not enabled) else "disabled"
-        self.text_color_entry.config(state=text_color_state)
+        self.location_color_entry.config(state="normal")
+        self.team_color_entry.config(state="normal")
+        self.text_color_entry.config(state="normal")
 
     def _selected_set_codes(self) -> list[str]:
         """Return selected set codes in sorted order."""
@@ -719,6 +742,7 @@ class FlashcardGeneratorGUI:
                 else f"Split colors: {'on' if self.split_text_colors_var.get() else 'off'}"
             ),
             f"Colors: text={self.text_color_var.get()} location={self.location_color_var.get()} team={self.team_color_var.get()}",
+            f"Text size: {self.text_size_var.get()}",
             f"League logo overlay: {self.league_logo_corner_var.get()}",
             f"Output folder: {self.output_var.get()} (set subfolders appended)",
             f"Logos: data/logos_raw/",
@@ -842,6 +866,7 @@ class FlashcardGeneratorGUI:
             location_color = self.location_color_var.get()
             team_color = self.team_color_var.get()
             league_logo_corner = self.league_logo_corner_var.get()
+            text_size = self.text_size_var.get()
 
             # Validate colors before generation
             valid_colors, invalid_msg = self._validate_colors(text_color, location_color, team_color)
@@ -869,6 +894,7 @@ class FlashcardGeneratorGUI:
                 name_format=name_format,
                 split_text_colors=split_text_colors,
                 text_color=text_color,
+                text_size=text_size,
                 location_color=location_color,
                 team_color=team_color,
                 league_logo_corner=league_logo_corner,
@@ -1130,6 +1156,8 @@ class FlashcardGeneratorGUI:
             "none", "top-left", "top-right", "bottom-left", "bottom-right"
         ):
             self.league_logo_corner_var.set(data["league_logo_corner"])
+        if "text_size" in data and data["text_size"] in ("large", "medium", "small"):
+            self.text_size_var.set(data["text_size"])
 
         # Window geometry
         if "geometry" in data:
@@ -1158,6 +1186,7 @@ class FlashcardGeneratorGUI:
             "location_color": self.location_color_var.get(),
             "team_color": self.team_color_var.get(),
             "league_logo_corner": self.league_logo_corner_var.get(),
+            "text_size": self.text_size_var.get(),
             "geometry": self.root.geometry(),
         }
         path = self._config_path()

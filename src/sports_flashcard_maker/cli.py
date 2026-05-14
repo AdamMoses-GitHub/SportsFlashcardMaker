@@ -76,6 +76,13 @@ def parse_args() -> argparse.Namespace:
         help="Text color when split text colors is disabled (hex or named color).",
     )
     parser.add_argument(
+        "--text-size",
+        dest="text_size",
+        choices=["large", "medium", "small"],
+        default="large",
+        help="Font size for text-only cards: 'large' (default, fills card), 'medium', or 'small'.",
+    )
+    parser.add_argument(
         "--split-text-colors",
         dest="split_text_colors",
         action="store_true",
@@ -122,6 +129,7 @@ def cli_main() -> None:
             location_color=args.location_color,
             team_color=args.team_color,
             text_color=args.text_color,
+            text_size=args.text_size,
             league_logo_corner=args.league_logo_corner,
         )
 
@@ -148,6 +156,7 @@ def cli_main() -> None:
         location_color=args.location_color,
         team_color=args.team_color,
         text_color=args.text_color,
+        text_size=args.text_size,
         league_logo_corner=args.league_logo_corner,
     )
 
