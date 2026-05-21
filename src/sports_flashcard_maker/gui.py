@@ -135,7 +135,7 @@ class FlashcardGeneratorGUI:
 
         # ============ TAB 1: SETS ============
         sets_tab = ttk.Frame(main_tabs, padding=10)
-        main_tabs.add(sets_tab, text="Sets")
+        main_tabs.add(sets_tab, text="Leagues & Sets")
 
         toolbar = ttk.Frame(sets_tab)
         toolbar.pack(fill="x", pady=(0, 8))
@@ -166,11 +166,31 @@ class FlashcardGeneratorGUI:
             var = tk.BooleanVar(value=code in default_selected)
             self.set_vars[code] = var
 
-            text = f"{team_set.display_name}"
+            count = len(team_set.teams)
+            text = f"{team_set.display_name} ({count})" if count else team_set.display_name
             chk = ttk.Checkbutton(pro_frame, text=text, variable=var, command=self._update_info)
             chk.grid(row=row, column=col, sticky="w", padx=(0, 14), pady=2)
 
-        # College Conferences
+        # College Conferences — combined "all" set
+        cfb_all_frame = ttk.LabelFrame(sets_tab, text="College Football — Combined", padding=8)
+        cfb_all_frame.pack(fill="x", pady=(0, 6))
+
+        cfb_all_set = FLASHCARD_SETS["cfb_all"]
+        cfb_all_var = tk.BooleanVar(value=False)
+        self.set_vars["cfb_all"] = cfb_all_var
+        ttk.Checkbutton(
+            cfb_all_frame,
+            text=f"{cfb_all_set.display_name} ({len(cfb_all_set.teams)})" if cfb_all_set.teams else cfb_all_set.display_name,
+            variable=cfb_all_var,
+            command=self._update_info,
+        ).pack(side="left", anchor="w")
+        ttk.Label(
+            cfb_all_frame,
+            text='— all 8 conferences in one output folder; pair with "Show conference/division"',
+            foreground="#555",
+        ).pack(side="left", anchor="w", padx=(6, 0))
+
+        # College Conferences — individual
         college_frame = ttk.LabelFrame(sets_tab, text="College Football Conferences", padding=8)
         college_frame.pack(fill="x", pady=(0, 0))
 
@@ -183,7 +203,8 @@ class FlashcardGeneratorGUI:
             var = tk.BooleanVar(value=code in default_selected)
             self.set_vars[code] = var
 
-            text = f"{team_set.display_name}"
+            count = len(team_set.teams)
+            text = f"{team_set.display_name} ({count})" if count else team_set.display_name
             chk = ttk.Checkbutton(college_frame, text=text, variable=var, command=self._update_info)
             chk.grid(row=row, column=col, sticky="w", padx=(0, 14), pady=2)
 
@@ -200,7 +221,8 @@ class FlashcardGeneratorGUI:
             var = tk.BooleanVar(value=code in default_selected)
             self.set_vars[code] = var
 
-            text = f"{team_set.display_name}"
+            count = len(team_set.teams)
+            text = f"{team_set.display_name} ({count})" if count else team_set.display_name
             chk = ttk.Checkbutton(english_frame, text=text, variable=var, command=self._update_info)
             chk.grid(row=row, column=col, sticky="w", padx=(0, 14), pady=2)
 
@@ -265,25 +287,32 @@ class FlashcardGeneratorGUI:
             foreground="#555",
         ).grid(row=2, column=3, sticky="w", padx=(10, 0), pady=4)
 
-        # Card Types
-        card_types_frame = ttk.LabelFrame(settings_tab, text="Card Types", padding=10)
-        card_types_frame.pack(fill="x", pady=(0, 8))
+        self.force_refresh_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            general_frame,
+            text="Force re-download logos (ignore cache)",
+            variable=self.force_refresh_var,
+        ).grid(row=3, column=1, columnspan=3, sticky="w", pady=(2, 4))
+
+        # ── Row: Card Types | Filename Pattern | Name Format ─────────────────
+        card_row = ttk.Frame(settings_tab)
+        card_row.pack(fill="x", pady=(0, 8))
+        card_row.columnconfigure(0, weight=1)
+        card_row.columnconfigure(1, weight=1)
+        card_row.columnconfigure(2, weight=1)
+
+        card_types_frame = ttk.LabelFrame(card_row, text="Card Types", padding=10)
+        card_types_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
 
         self.card_type_logo_var = tk.BooleanVar(value=True)
         self.card_type_text_var = tk.BooleanVar(value=True)
         self.card_type_combo_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(card_types_frame, text="Logo  — card showing the team logo only", variable=self.card_type_logo_var, command=self._on_card_types_changed).pack(anchor="w", pady=1)
-        ttk.Checkbutton(card_types_frame, text="Text  — card showing the team name only", variable=self.card_type_text_var, command=self._on_card_types_changed).pack(anchor="w", pady=1)
-        ttk.Checkbutton(card_types_frame, text="Combined  — card showing both logo and team name", variable=self.card_type_combo_var, command=self._on_card_types_changed).pack(anchor="w", pady=1)
+        ttk.Checkbutton(card_types_frame, text="Logo  — logo only", variable=self.card_type_logo_var, command=self._on_card_types_changed).pack(anchor="w", pady=2)
+        ttk.Checkbutton(card_types_frame, text="Text  — team name only", variable=self.card_type_text_var, command=self._on_card_types_changed).pack(anchor="w", pady=2)
+        ttk.Checkbutton(card_types_frame, text="Combined  — logo + name", variable=self.card_type_combo_var, command=self._on_card_types_changed).pack(anchor="w", pady=2)
 
-        # Filename Pattern and Name Format (side by side)
-        naming_row = ttk.Frame(settings_tab)
-        naming_row.pack(fill="x", pady=(0, 8))
-        naming_row.columnconfigure(0, weight=1)
-        naming_row.columnconfigure(1, weight=1)
-
-        filename_frame = ttk.LabelFrame(naming_row, text="Filename Pattern", padding=8)
-        filename_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
+        filename_frame = ttk.LabelFrame(card_row, text="Filename Pattern", padding=8)
+        filename_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 4))
 
         self.filename_format_var = tk.StringVar(value="prefix")
         ttk.Radiobutton(
@@ -300,14 +329,14 @@ class FlashcardGeneratorGUI:
         ).pack(anchor="w", pady=1)
         ttk.Label(
             filename_frame,
-            text="CARDTYPE is logo, text, or combo. TEAMTEXT follows the Name Format.",
+            text="CARDTYPE is logo, text, or combo.",
             foreground="#555",
-            wraplength=280,
+            wraplength=200,
             justify="left",
         ).pack(anchor="w", pady=(6, 0))
 
-        name_frame = ttk.LabelFrame(naming_row, text="Name Format", padding=8)
-        name_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
+        name_frame = ttk.LabelFrame(card_row, text="Name Format", padding=8)
+        name_frame.grid(row=0, column=2, sticky="nsew", padx=(4, 0))
 
         self.name_format_var = tk.StringVar(value="full")
         self.name_full_btn = ttk.Radiobutton(
@@ -335,8 +364,8 @@ class FlashcardGeneratorGUI:
         )
         self.name_city_btn.pack(anchor="w", pady=1)
 
-        # Text Colors
-        colors_frame = ttk.LabelFrame(settings_tab, text="Text Colors", padding=10)
+        # Text Appearance
+        colors_frame = ttk.LabelFrame(settings_tab, text="Text Appearance", padding=10)
         colors_frame.pack(fill="x", pady=(0, 0))
 
         self.split_text_colors_var = tk.BooleanVar(value=False)
@@ -369,9 +398,13 @@ class FlashcardGeneratorGUI:
             textvariable=self.text_color_var,
             width=12,
         )
-        self.text_color_entry.grid(row=0, column=1, sticky="w", pady=2)
+        self.text_color_entry.grid(row=0, column=1, sticky="w", pady=2, padx=(0, 6))
+        self.text_color_swatch = tk.Label(
+            self.color_inputs_frame, text="", width=3, relief="solid", bd=1
+        )
+        self.text_color_swatch.grid(row=0, column=2, sticky="w", pady=2)
         ttk.Label(self.color_inputs_frame, text="Used when split colors is off", foreground="#777").grid(
-            row=0, column=2, sticky="w", padx=(10, 0), pady=2
+            row=0, column=3, sticky="w", padx=(10, 0), pady=2
         )
 
         ttk.Label(self.color_inputs_frame, text="Location color").grid(
@@ -383,9 +416,13 @@ class FlashcardGeneratorGUI:
             textvariable=self.location_color_var,
             width=12,
         )
-        self.location_color_entry.grid(row=1, column=1, sticky="w", pady=2)
+        self.location_color_entry.grid(row=1, column=1, sticky="w", pady=2, padx=(0, 6))
+        self.location_color_swatch = tk.Label(
+            self.color_inputs_frame, text="", width=3, relief="solid", bd=1
+        )
+        self.location_color_swatch.grid(row=1, column=2, sticky="w", pady=2)
         ttk.Label(self.color_inputs_frame, text="Used when split colors is on", foreground="#777").grid(
-            row=1, column=2, sticky="w", padx=(10, 0), pady=2
+            row=1, column=3, sticky="w", padx=(10, 0), pady=2
         )
 
         ttk.Label(self.color_inputs_frame, text="Team color").grid(
@@ -397,9 +434,13 @@ class FlashcardGeneratorGUI:
             textvariable=self.team_color_var,
             width=12,
         )
-        self.team_color_entry.grid(row=2, column=1, sticky="w", pady=2)
+        self.team_color_entry.grid(row=2, column=1, sticky="w", pady=2, padx=(0, 6))
+        self.team_color_swatch = tk.Label(
+            self.color_inputs_frame, text="", width=3, relief="solid", bd=1
+        )
+        self.team_color_swatch.grid(row=2, column=2, sticky="w", pady=2)
         ttk.Label(self.color_inputs_frame, text="Used when split colors is on", foreground="#777").grid(
-            row=2, column=2, sticky="w", padx=(10, 0), pady=2
+            row=2, column=3, sticky="w", padx=(10, 0), pady=2
         )
 
         self.color_hint_label = ttk.Label(
@@ -439,31 +480,147 @@ class FlashcardGeneratorGUI:
             foreground="#555",
         ).pack(anchor="w", pady=(2, 0))
 
-        # League Logo Overlay
+        ttk.Separator(colors_frame, orient="horizontal").pack(fill="x", pady=(10, 6))
+
+        # Background color
+        bg_row = ttk.Frame(colors_frame)
+        bg_row.pack(anchor="w", fill="x", pady=(0, 4))
+        ttk.Label(bg_row, text="Card background:").pack(side="left", padx=(0, 8))
+        self.bg_color_var = tk.StringVar(value="white")
+        ttk.Entry(bg_row, textvariable=self.bg_color_var, width=12).pack(side="left", padx=(0, 6))
+        self.bg_color_swatch = tk.Label(bg_row, text="", width=3, relief="solid", bd=1)
+        self.bg_color_swatch.pack(side="left", padx=(0, 10))
+        ttk.Label(bg_row, text="Applies to all card types.", foreground="#777").pack(side="left")
+
+        # Text effect
+        effect_row = ttk.Frame(colors_frame)
+        effect_row.pack(anchor="w", fill="x", pady=(0, 4))
+        ttk.Label(effect_row, text="Text effect:").pack(side="left", padx=(0, 8))
+        self.text_effect_var = tk.StringVar(value="none")
+        for lbl, val in (("None", "none"), ("Shadow", "shadow"), ("Outline", "outline")):
+            ttk.Radiobutton(effect_row, text=lbl, variable=self.text_effect_var, value=val).pack(
+                side="left", padx=(0, 6)
+            )
+        ttk.Label(effect_row, text="  Effect color:").pack(side="left", padx=(0, 6))
+        self.text_effect_color_var = tk.StringVar(value="#888888")
+        ttk.Entry(effect_row, textvariable=self.text_effect_color_var, width=10).pack(side="left", padx=(0, 6))
+        self.text_effect_color_swatch = tk.Label(effect_row, text="", width=3, relief="solid", bd=1)
+        self.text_effect_color_swatch.pack(side="left")
+
+        # Logo filter
+        filter_row = ttk.Frame(colors_frame)
+        filter_row.pack(anchor="w", fill="x", pady=(0, 0))
+        ttk.Label(filter_row, text="Logo filter:").pack(side="left", padx=(0, 8))
+        self.logo_filter_var = tk.StringVar(value="none")
+        for lbl, val in (("None", "none"), ("Grayscale", "grayscale"), ("Sepia", "sepia")):
+            ttk.Radiobutton(filter_row, text=lbl, variable=self.logo_filter_var, value=val).pack(
+                side="left", padx=(0, 6)
+            )
+
+        # ── Row: Conference / Division (left) + Card Index (right) ──────────
+        conf_index_row = ttk.Frame(settings_tab)
+        conf_index_row.pack(fill="x", pady=(8, 0))
+        conf_index_row.columnconfigure(0, weight=1)
+        conf_index_row.columnconfigure(1, weight=1)
+
+        conf_frame = ttk.LabelFrame(conf_index_row, text="Conference / Division", padding=10)
+        conf_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
+
+        self.show_conference_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            conf_frame,
+            text="Show conference / division below team name",
+            variable=self.show_conference_var,
+        ).pack(anchor="w")
+
+        self.abbreviate_conference_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            conf_frame,
+            text='Abbreviate  (e.g. "AL · East")',
+            variable=self.abbreviate_conference_var,
+        ).pack(anchor="w", pady=(4, 0))
+
+        ttk.Label(
+            conf_frame,
+            text="Applies to text and combo cards for MLB, NFL, NBA, NHL, WNBA, MLS, and CFB All Conferences.",
+            foreground="#555",
+            wraplength=280,
+            justify="left",
+        ).pack(anchor="w", pady=(6, 0))
+
+        index_frame = ttk.LabelFrame(conf_index_row, text='Card Index  (e.g. "1/18")', padding=10)
+        index_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
+
+        self.index_corner_var = tk.StringVar(value="none")
+        index_grid = ttk.Frame(index_frame)
+        index_grid.pack(anchor="w")
+
+        ttk.Radiobutton(index_grid, text="Off", variable=self.index_corner_var, value="none").grid(
+            row=0, column=0, sticky="w", padx=(0, 6), pady=(0, 6)
+        )
+        for col, (lbl, val) in enumerate([("Top-left", "top-left"), ("Top-center", "top-center"), ("Top-right", "top-right")]):
+            ttk.Radiobutton(index_grid, text=lbl, variable=self.index_corner_var, value=val).grid(
+                row=1, column=col, sticky="w", padx=(0, 6), pady=2
+            )
+        for col, (lbl, val) in enumerate([("Bottom-left", "bottom-left"), ("Bottom-center", "bottom-center"), ("Bottom-right", "bottom-right")]):
+            ttk.Radiobutton(index_grid, text=lbl, variable=self.index_corner_var, value=val).grid(
+                row=2, column=col, sticky="w", padx=(0, 6), pady=2
+            )
+
+        ttk.Label(
+            index_frame,
+            text="Tip: choose a different position than the league logo overlay.",
+            foreground="#555",
+            wraplength=280,
+            justify="left",
+        ).pack(anchor="w", pady=(8, 0))
+
+        # ── League Logo Overlay (full width) ─────────────────────────────────
         overlay_frame = ttk.LabelFrame(settings_tab, text="League Logo Overlay", padding=10)
         overlay_frame.pack(fill="x", pady=(8, 0))
 
         self.league_logo_corner_var = tk.StringVar(value="none")
-        corners = [
+        logo_corner_row = ttk.Frame(overlay_frame)
+        logo_corner_row.pack(anchor="w")
+        for label, value in [
             ("None (off)", "none"),
             ("Top-left", "top-left"),
             ("Top-right", "top-right"),
             ("Bottom-left", "bottom-left"),
             ("Bottom-right", "bottom-right"),
-        ]
-        btn_row = ttk.Frame(overlay_frame)
-        btn_row.pack(anchor="w")
-        for label, value in corners:
+        ]:
             ttk.Radiobutton(
-                btn_row,
+                logo_corner_row,
                 text=label,
                 variable=self.league_logo_corner_var,
                 value=value,
-            ).pack(side="left", padx=(0, 10))
+            ).pack(side="left", padx=(0, 12))
         ttk.Label(
             overlay_frame,
             text="Places a small league / conference logo in the selected corner of every card. "
                  "The logo is downloaded automatically alongside team logos.",
+            foreground="#555",
+            wraplength=560,
+            justify="left",
+        ).pack(anchor="w", pady=(6, 0))
+
+        # ── PDF Output ────────────────────────────────────────────────────────
+        pdf_frame = ttk.LabelFrame(settings_tab, text="PDF Output", padding=10)
+        pdf_frame.pack(fill="x", pady=(8, 0))
+
+        self.pdf_output_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            pdf_frame,
+            text="Also generate a PDF (one card per page, duplex-ready front/back order)",
+            variable=self.pdf_output_var,
+        ).pack(anchor="w")
+        ttk.Label(
+            pdf_frame,
+            text=(
+                "Saves {set_code}_flashcards.pdf alongside the PNGs. "
+                "With Logo + Text selected, pages alternate logo/text per team — "
+                "print duplex (flip on short edge) to get aligned fronts and backs."
+            ),
             foreground="#555",
             wraplength=560,
             justify="left",
@@ -559,6 +716,14 @@ class FlashcardGeneratorGUI:
             self.card_type_text_var,
             self.card_type_combo_var,
             self.league_logo_corner_var,
+            self.show_conference_var,
+            self.abbreviate_conference_var,
+            self.index_corner_var,
+            self.bg_color_var,
+            self.text_effect_var,
+            self.text_effect_color_var,
+            self.logo_filter_var,
+            self.pdf_output_var,
         ):
             var.trace_add("write", lambda *_: self._update_info())
         self.card_ratio_var.trace_add("write", lambda *_: self._on_card_ratio_changed())
@@ -603,6 +768,20 @@ class FlashcardGeneratorGUI:
     def _on_name_format_changed(self) -> None:
         """Update UI state based on name format."""
         self._on_split_color_toggle()
+
+    def _refresh_color_swatches(self) -> None:
+        """Update swatch labels to reflect current color entry values."""
+        for swatch, var in (
+            (self.text_color_swatch, self.text_color_var),
+            (self.location_color_swatch, self.location_color_var),
+            (self.team_color_swatch, self.team_color_var),
+            (self.bg_color_swatch, self.bg_color_var),
+            (self.text_effect_color_swatch, self.text_effect_color_var),
+        ):
+            try:
+                swatch.config(bg=var.get())
+            except tk.TclError:
+                swatch.config(bg="#cccccc")
 
     def _on_split_color_toggle(self) -> None:
         """Enable/disable split-color controls based on mode and name format."""
@@ -743,7 +922,15 @@ class FlashcardGeneratorGUI:
             ),
             f"Colors: text={self.text_color_var.get()} location={self.location_color_var.get()} team={self.team_color_var.get()}",
             f"Text size: {self.text_size_var.get()}",
+            f"Background: {self.bg_color_var.get()}",
+            f"Text effect: {self.text_effect_var.get()}"
+            + (f" (color: {self.text_effect_color_var.get()})" if self.text_effect_var.get() != "none" else ""),
+            f"Logo filter: {self.logo_filter_var.get()}",
+            f"Conference/division: {'on' if self.show_conference_var.get() else 'off'}"
+            + (" (abbreviated)" if self.abbreviate_conference_var.get() else ""),
+            f"Card index: {self.index_corner_var.get()}",
             f"League logo overlay: {self.league_logo_corner_var.get()}",
+            f"PDF output: {'on' if self.pdf_output_var.get() else 'off'}",
             f"Output folder: {self.output_var.get()} (set subfolders appended)",
             f"Logos: data/logos_raw/",
         ]
@@ -752,6 +939,7 @@ class FlashcardGeneratorGUI:
         self.info_text.delete(1.0, tk.END)
         self.info_text.insert(1.0, "\n".join(info_lines))
         self.info_text.config(state="disabled")
+        self._refresh_color_swatches()
         self._update_filename_preview(selected_codes)
 
         output_folder = Path(self.output_var.get())
@@ -865,11 +1053,18 @@ class FlashcardGeneratorGUI:
             text_color = self.text_color_var.get()
             location_color = self.location_color_var.get()
             team_color = self.team_color_var.get()
+            bg_color = self.bg_color_var.get()
+            text_effect = self.text_effect_var.get()
+            text_effect_color = self.text_effect_color_var.get()
+            logo_filter = self.logo_filter_var.get()
             league_logo_corner = self.league_logo_corner_var.get()
             text_size = self.text_size_var.get()
-
-            # Validate colors before generation
-            valid_colors, invalid_msg = self._validate_colors(text_color, location_color, team_color)
+            show_conference = self.show_conference_var.get()
+            abbreviate_conference = self.abbreviate_conference_var.get()
+            index_corner = self.index_corner_var.get()
+            force_refresh = self.force_refresh_var.get()
+            pdf_output = self.pdf_output_var.get()
+            valid_colors, invalid_msg = self._validate_colors(text_color, location_color, team_color, bg_color, text_effect_color)
             if not valid_colors:
                 self._set_status(f"✗ Error:\n{invalid_msg}")
                 messagebox.showerror("Invalid Color", invalid_msg)
@@ -897,7 +1092,16 @@ class FlashcardGeneratorGUI:
                 text_size=text_size,
                 location_color=location_color,
                 team_color=team_color,
+                bg_color=bg_color,
+                text_effect=text_effect,
+                text_effect_color=text_effect_color,
+                logo_filter=logo_filter,
+                show_conference=show_conference,
+                abbreviate_conference=abbreviate_conference,
+                index_corner=index_corner,
                 league_logo_corner=league_logo_corner,
+                pdf_output=pdf_output,
+                force_refresh=force_refresh,
                 progress_callback=log_progress,
             )
 
@@ -932,6 +1136,8 @@ class FlashcardGeneratorGUI:
                         self._append_status(
                             f"  ✓ {item['display_name']}: {item['team_count']} teams → {item['file_count']} cards"
                         )
+                        if item.get("pdf_path"):
+                            self._append_status(f"    PDF: {Path(str(item['pdf_path'])).name}")
                     else:
                         error_msg = item.get('error', 'Unknown error')
                         self._append_status(f"  ✗ {item.get('set_code', 'unknown')}: {error_msg}")
@@ -1067,7 +1273,7 @@ class FlashcardGeneratorGUI:
             except Exception as e:
                 messagebox.showerror("Error", f"Could not delete files: {e}")
 
-    def _validate_colors(self, text_color: str, location_color: str, team_color: str) -> tuple[bool, str]:
+    def _validate_colors(self, text_color: str, location_color: str, team_color: str, bg_color: str, text_effect_color: str) -> tuple[bool, str]:
         """Validate color strings. Return (is_valid, error_message)."""
         import re
         
@@ -1087,6 +1293,10 @@ class FlashcardGeneratorGUI:
             return False, f"Invalid location color '{location_color}'. Use hex (#RRGGBB) or named color."
         if not is_valid_color(team_color):
             return False, f"Invalid team color '{team_color}'. Use hex (#RRGGBB) or named color."
+        if not is_valid_color(bg_color):
+            return False, f"Invalid background color '{bg_color}'. Use hex (#RRGGBB) or named color."
+        if not is_valid_color(text_effect_color):
+            return False, f"Invalid effect color '{text_effect_color}'. Use hex (#RRGGBB) or named color."
         
         return True, ""
 
@@ -1158,6 +1368,28 @@ class FlashcardGeneratorGUI:
             self.league_logo_corner_var.set(data["league_logo_corner"])
         if "text_size" in data and data["text_size"] in ("large", "medium", "small"):
             self.text_size_var.set(data["text_size"])
+        if "show_conference" in data:
+            self.show_conference_var.set(bool(data["show_conference"]))
+        if "abbreviate_conference" in data:
+            self.abbreviate_conference_var.set(bool(data["abbreviate_conference"]))
+        if "show_index" in data:
+            corner = data["show_index"]
+            if corner in ("none", "top-left", "top-right", "bottom-left", "bottom-right"):
+                self.index_corner_var.set(corner)
+            elif corner is True:
+                self.index_corner_var.set("bottom-right")  # migrate old bool pref
+        if "index_corner" in data and data["index_corner"] in ("none", "top-left", "top-right", "bottom-left", "bottom-right"):
+            self.index_corner_var.set(data["index_corner"])
+        if "bg_color" in data:
+            self.bg_color_var.set(data["bg_color"])
+        if "text_effect" in data and data["text_effect"] in ("none", "shadow", "outline"):
+            self.text_effect_var.set(data["text_effect"])
+        if "text_effect_color" in data:
+            self.text_effect_color_var.set(data["text_effect_color"])
+        if "logo_filter" in data and data["logo_filter"] in ("none", "grayscale", "sepia"):
+            self.logo_filter_var.set(data["logo_filter"])
+        if "pdf_output" in data:
+            self.pdf_output_var.set(bool(data["pdf_output"]))
 
         # Window geometry
         if "geometry" in data:
@@ -1187,6 +1419,14 @@ class FlashcardGeneratorGUI:
             "team_color": self.team_color_var.get(),
             "league_logo_corner": self.league_logo_corner_var.get(),
             "text_size": self.text_size_var.get(),
+            "show_conference": self.show_conference_var.get(),
+            "abbreviate_conference": self.abbreviate_conference_var.get(),
+            "index_corner": self.index_corner_var.get(),
+            "bg_color": self.bg_color_var.get(),
+            "text_effect": self.text_effect_var.get(),
+            "text_effect_color": self.text_effect_color_var.get(),
+            "logo_filter": self.logo_filter_var.get(),
+            "pdf_output": self.pdf_output_var.get(),
             "geometry": self.root.geometry(),
         }
         path = self._config_path()

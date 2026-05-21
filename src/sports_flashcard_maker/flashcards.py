@@ -63,6 +63,45 @@ def _wrap_words(
     return lines
 
 
+def _apply_logo_filter(logo_rgba: Image.Image, logo_filter: str) -> Image.Image:
+    """Apply an optional visual filter to a logo RGBA image."""
+    if logo_filter not in ("grayscale", "sepia"):
+        return logo_rgba
+    r, g, b, a = logo_rgba.split()
+    gray = ImageOps.grayscale(Image.merge("RGB", (r, g, b)))
+    if logo_filter == "grayscale":
+        return Image.merge("RGBA", (gray, gray, gray, a))
+    # sepia
+    sepia_r = gray.point(lambda px: min(255, int(px * 1.07)))
+    sepia_g = gray.point(lambda px: min(255, int(px * 0.74)))
+    sepia_b = gray.point(lambda px: min(255, int(px * 0.43)))
+    return Image.merge("RGBA", (sepia_r, sepia_g, sepia_b, a))
+
+
+def _draw_text_with_effect(
+    draw: ImageDraw.ImageDraw,
+    xy: tuple[int, int],
+    text: str,
+    fill: str,
+    font: ImageFont.ImageFont,
+    effect: str = "none",
+    effect_color: str = "#888888",
+) -> None:
+    """Draw text with an optional drop shadow or outline effect."""
+    x, y = xy
+    if effect == "shadow":
+        _, h = _text_size(draw, text, font)
+        offset = max(2, h // 15)
+        draw.text((x + offset, y + offset), text, fill=effect_color, font=font)
+    elif effect == "outline":
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                if dx == 0 and dy == 0:
+                    continue
+                draw.text((x + dx, y + dy), text, fill=effect_color, font=font)
+    draw.text(xy, text, fill=fill, font=font)
+
+
 def _fit_back_text_layout(
     team_name: str,
     width_px: int,
@@ -166,6 +205,16 @@ def _fit_two_block_text_layout(
     )
 
 
+def _get_conference_line(team: Team, abbreviate: bool) -> str | None:
+    """Return the conference/division display string, or None if no data."""
+    conf = team.conference_abbr if abbreviate else team.conference
+    if not conf:
+        return None
+    if team.division:
+        return f"{conf} · {team.division}"
+    return conf
+
+
 def _draw_team_text_region(
     draw: ImageDraw.ImageDraw,
     team: Team,
@@ -177,8 +226,17 @@ def _draw_team_text_region(
     location_color: str,
     team_color: str,
     text_color: str = "black",
+    text_effect: str = "none",
+    text_effect_color: str = "#888888",
     size_scale: float = 1.0,
+    show_conference: bool = False,
+    abbreviate_conference: bool = False,
 ) -> None:
+    # Reserve space at the bottom for the conference/division line if needed.
+    conf_line = _get_conference_line(team, abbreviate_conference) if show_conference else None
+    conf_reserved = int(region_height_px * 0.20) if conf_line else 0
+    eff_h = region_height_px - conf_reserved
+
     back_text = format_team_name(team, name_format)
     use_split = split_text_colors and name_format == "full"
 
@@ -198,7 +256,7 @@ def _draw_team_text_region(
             first_text,
             second_text,
             width_px,
-            region_height_px,
+            eff_h,
             size_scale=size_scale,
         )
 
@@ -209,9 +267,9 @@ def _draw_team_text_region(
         second_height = sum(h for _, h in second_sizes) + spacing * max(0, len(second_lines) - 1)
         total_height = first_height + second_height
 
-        margin_top = int(region_height_px * 0.08)
-        margin_bottom = int(region_height_px * 0.08)
-        safe_height = region_height_px - margin_top - margin_bottom
+        margin_top = int(eff_h * 0.08)
+        margin_bottom = int(eff_h * 0.08)
+        safe_height = eff_h - margin_top - margin_bottom
 
         if total_height > safe_height:
             use_split = False
@@ -221,28 +279,45 @@ def _draw_team_text_region(
         if use_split:
             for line, (line_width, line_height) in zip(first_lines, first_sizes):
                 x = (width_px - line_width) // 2
-                draw.text((x, y), line, fill=first_color, font=font)
+                _draw_text_with_effect(draw, (x, y), line, first_color, font, text_effect, text_effect_color)
                 y += line_height + spacing
 
             for line, (line_width, line_height) in zip(second_lines, second_sizes):
                 x = (width_px - line_width) // 2
-                draw.text((x, y), line, fill=second_color, font=font)
+                _draw_text_with_effect(draw, (x, y), line, second_color, font, text_effect, text_effect_color)
                 y += line_height + spacing
 
     if not use_split:
-        font, lines, spacing = _fit_back_text_layout(back_text, width_px, region_height_px, size_scale=size_scale)
+        font, lines, spacing = _fit_back_text_layout(back_text, width_px, eff_h, size_scale=size_scale)
         line_sizes = [_text_size(draw, line, font) for line in lines]
         total_height = sum(h for _, h in line_sizes) + spacing * (len(lines) - 1)
 
-        margin_top = int(region_height_px * 0.08)
-        margin_bottom = int(region_height_px * 0.08)
-        safe_height = region_height_px - margin_top - margin_bottom
+        margin_top = int(eff_h * 0.08)
+        margin_bottom = int(eff_h * 0.08)
+        safe_height = eff_h - margin_top - margin_bottom
         y = top_offset_px + margin_top + max(0, (safe_height - total_height) // 2)
 
         for line, (line_width, line_height) in zip(lines, line_sizes):
             x = (width_px - line_width) // 2
-            draw.text((x, y), line, fill=text_color, font=font)
+            _draw_text_with_effect(draw, (x, y), line, text_color, font, text_effect, text_effect_color)
             y += line_height + spacing
+
+    # Conference / division line at the bottom of the reserved area.
+    if conf_line:
+        conf_font, conf_lines, conf_spacing = _fit_back_text_layout(
+            conf_line, width_px, conf_reserved, size_scale=1.0
+        )
+        conf_line_sizes = [_text_size(draw, l, conf_font) for l in conf_lines]
+        conf_total_h = (
+            sum(h for _, h in conf_line_sizes)
+            + conf_spacing * max(0, len(conf_lines) - 1)
+        )
+        conf_top = top_offset_px + eff_h
+        cy = conf_top + max(0, (conf_reserved - conf_total_h) // 2)
+        for cl, (clw, clh) in zip(conf_lines, conf_line_sizes):
+            cx = (width_px - clw) // 2
+            draw.text((cx, cy), cl, fill=text_color, font=conf_font)
+            cy += clh + conf_spacing
 
 
 def _overlay_league_logo(
@@ -278,15 +353,52 @@ def _overlay_league_logo(
         pass  # Never let a missing/corrupt league logo crash card generation
 
 
+def _draw_index_label(
+    card: Image.Image,
+    index: int,
+    total: int,
+    width_px: int,
+    height_px: int,
+    corner: str = "bottom-right",
+) -> None:
+    """Draw a subtle 'n/total' counter in the specified corner."""
+    label = f"{index}/{total}"
+    font_size = max(10, int(width_px * 0.016))
+    font = _load_font(font_size)
+    draw = ImageDraw.Draw(card)
+    w, h = _text_size(draw, label, font)
+    padding_x = int(width_px * 0.025)
+    padding_y = int(height_px * 0.025)
+    if corner == "top-left":
+        x, y = padding_x, padding_y
+    elif corner == "top-center":
+        x, y = (width_px - w) // 2, padding_y
+    elif corner == "top-right":
+        x, y = width_px - w - padding_x, padding_y
+    elif corner == "bottom-left":
+        x, y = padding_x, height_px - h - padding_y
+    elif corner == "bottom-center":
+        x, y = (width_px - w) // 2, height_px - h - padding_y
+    else:  # bottom-right
+        x, y = width_px - w - padding_x, height_px - h - padding_y
+    draw.text((x, y), label, fill="#aaaaaa", font=font)
+
+
 def _build_logo_card(
     source_logo: Path,
     width_px: int,
     height_px: int,
+    bg_color: str = "white",
+    logo_filter: str = "none",
     league_logo_path: Path | None = None,
     league_logo_corner: str = "none",
+    index_corner: str = "none",
+    index: int = 0,
+    total: int = 0,
 ) -> Image.Image:
-    card = Image.new("RGB", (width_px, height_px), color="white")
+    card = Image.new("RGB", (width_px, height_px), color=bg_color)
     with Image.open(source_logo).convert("RGBA") as logo_rgba:
+        logo_rgba = _apply_logo_filter(logo_rgba, logo_filter)
         max_logo_width = int(width_px * 0.8)
         max_logo_height = int(height_px * 0.8)
         resized_logo = ImageOps.contain(logo_rgba, (max_logo_width, max_logo_height))
@@ -295,6 +407,8 @@ def _build_logo_card(
         card.paste(resized_logo, (x, y), resized_logo)
     if league_logo_path and league_logo_corner != "none":
         _overlay_league_logo(card, league_logo_path, league_logo_corner)
+    if index_corner != "none" and total > 0:
+        _draw_index_label(card, index, total, width_px, height_px, index_corner)
     return card
 
 
@@ -307,13 +421,21 @@ def _build_text_card(
     location_color: str,
     team_color: str,
     text_color: str = "black",
+    bg_color: str = "white",
+    text_effect: str = "none",
+    text_effect_color: str = "#888888",
     league_logo_path: Path | None = None,
     league_logo_corner: str = "none",
     text_size: str = "large",
+    show_conference: bool = False,
+    abbreviate_conference: bool = False,
+    index_corner: str = "none",
+    index: int = 0,
+    total: int = 0,
 ) -> Image.Image:
     _TEXT_SIZE_SCALES = {"large": 1.0, "medium": 0.65, "small": 0.45}
     size_scale = _TEXT_SIZE_SCALES.get(text_size, 1.0)
-    card = Image.new("RGB", (width_px, height_px), color="white")
+    card = Image.new("RGB", (width_px, height_px), color=bg_color)
     draw = ImageDraw.Draw(card)
     _draw_team_text_region(
         draw,
@@ -326,10 +448,16 @@ def _build_text_card(
         location_color,
         team_color,
         text_color,
+        text_effect=text_effect,
+        text_effect_color=text_effect_color,
         size_scale=size_scale,
+        show_conference=show_conference,
+        abbreviate_conference=abbreviate_conference,
     )
     if league_logo_path and league_logo_corner != "none":
         _overlay_league_logo(card, league_logo_path, league_logo_corner)
+    if index_corner != "none" and total > 0:
+        _draw_index_label(card, index, total, width_px, height_px, index_corner)
     return card
 
 
@@ -343,10 +471,19 @@ def _build_combined_card(
     location_color: str,
     team_color: str,
     text_color: str = "black",
+    bg_color: str = "white",
+    text_effect: str = "none",
+    text_effect_color: str = "#888888",
+    logo_filter: str = "none",
     league_logo_path: Path | None = None,
     league_logo_corner: str = "none",
+    show_conference: bool = False,
+    abbreviate_conference: bool = False,
+    index_corner: str = "none",
+    index: int = 0,
+    total: int = 0,
 ) -> Image.Image:
-    card = Image.new("RGB", (width_px, height_px), color="white")
+    card = Image.new("RGB", (width_px, height_px), color=bg_color)
     draw = ImageDraw.Draw(card)
 
     top_margin = int(height_px * 0.06)
@@ -355,6 +492,7 @@ def _build_combined_card(
     footer_height = max(int(height_px * 0.24), height_px - footer_top - int(height_px * 0.06))
 
     with Image.open(source_logo).convert("RGBA") as logo_rgba:
+        logo_rgba = _apply_logo_filter(logo_rgba, logo_filter)
         max_logo_width = int(width_px * 0.72)
         max_logo_height = int(logo_region_height * 0.92)
         resized_logo = ImageOps.contain(logo_rgba, (max_logo_width, max_logo_height))
@@ -380,10 +518,16 @@ def _build_combined_card(
         location_color,
         team_color,
         text_color,
+        text_effect=text_effect,
+        text_effect_color=text_effect_color,
+        show_conference=show_conference,
+        abbreviate_conference=abbreviate_conference,
     )
 
     if league_logo_path and league_logo_corner != "none":
         _overlay_league_logo(card, league_logo_path, league_logo_corner)
+    if index_corner != "none" and total > 0:
+        _draw_index_label(card, index, total, width_px, height_px, index_corner)
     return card
 
 
@@ -401,8 +545,15 @@ def build_flashcards(
     team_color: str = "#b22222",
     text_color: str = "black",
     text_size: str = "large",
+    show_conference: bool = False,
+    abbreviate_conference: bool = False,
+    index_corner: str = "none",
     league_logo_path: Path | None = None,
     league_logo_corner: str = "none",
+    bg_color: str = "white",
+    text_effect: str = "none",
+    text_effect_color: str = "#888888",
+    logo_filter: str = "none",
     progress_callback: Callable[[str], None] | None = None,
 ) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -415,6 +566,7 @@ def build_flashcards(
     created_cards: list[Path] = []
 
     ordered_teams = list(sorted_teams(teams))
+    total = len(ordered_teams)
 
     for index, team in enumerate(ordered_teams, start=1):
         if progress_callback:
@@ -442,11 +594,16 @@ def build_flashcards(
                 source_logo,
                 width_px,
                 height_px,
+                bg_color=bg_color,
+                logo_filter=logo_filter,
                 league_logo_path=league_logo_path,
                 league_logo_corner=league_logo_corner,
+                index_corner=index_corner,
+                index=index,
+                total=total,
             )
             logo_destination = output_dir / f"{logo_name}.png"
-            logo_card.save(logo_destination, dpi=(dpi, dpi))
+            logo_card.save(logo_destination, dpi=(dpi, dpi), optimize=True)
             created_cards.append(logo_destination)
             created_for_team.append(logo_destination.name)
 
@@ -460,12 +617,20 @@ def build_flashcards(
                 location_color,
                 team_color,
                 text_color,
+                bg_color=bg_color,
+                text_effect=text_effect,
+                text_effect_color=text_effect_color,
                 league_logo_path=league_logo_path,
                 league_logo_corner=league_logo_corner,
                 text_size=text_size,
+                show_conference=show_conference,
+                abbreviate_conference=abbreviate_conference,
+                index_corner=index_corner,
+                index=index,
+                total=total,
             )
             text_destination = output_dir / f"{text_name}.png"
-            text_card.save(text_destination, dpi=(dpi, dpi))
+            text_card.save(text_destination, dpi=(dpi, dpi), optimize=True)
             created_cards.append(text_destination)
             created_for_team.append(text_destination.name)
 
@@ -480,11 +645,20 @@ def build_flashcards(
                 location_color,
                 team_color,
                 text_color,
+                bg_color=bg_color,
+                text_effect=text_effect,
+                text_effect_color=text_effect_color,
+                logo_filter=logo_filter,
                 league_logo_path=league_logo_path,
                 league_logo_corner=league_logo_corner,
+                show_conference=show_conference,
+                abbreviate_conference=abbreviate_conference,
+                index_corner=index_corner,
+                index=index,
+                total=total,
             )
             combined_destination = output_dir / f"{combo_name}.png"
-            combined_card.save(combined_destination, dpi=(dpi, dpi))
+            combined_card.save(combined_destination, dpi=(dpi, dpi), optimize=True)
             created_cards.append(combined_destination)
             created_for_team.append(combined_destination.name)
 
@@ -492,3 +666,61 @@ def build_flashcards(
             progress_callback(f"      Saved cards: {', '.join(created_for_team)}")
 
     return created_cards
+
+
+def build_flashcard_pdf(
+    output_dir: Path,
+    teams: tuple[Team, ...],
+    pdf_path: Path,
+    card_types: set[str] | None = None,
+    filename_format: str = "prefix",
+    name_format: str = "full",
+    dpi: int = 300,
+    progress_callback: Callable[[str], None] | None = None,
+) -> Path:
+    """Assemble already-generated PNG cards into a single multi-page PDF.
+
+    Pages are ordered: for each team (sorted), each selected card type in the
+    order logo → text → combo.  With both 'logo' and 'text' selected this
+    produces an interleaved front/back pattern suited to duplex printing.
+    """
+    if card_types is None:
+        card_types = {"logo", "text"}
+
+    ordered_teams = list(sorted_teams(teams))
+    images: list[Image.Image] = []
+
+    for team in ordered_teams:
+        logo_name, text_name, combo_name = format_filename(
+            team, filename_format=filename_format, name_format=name_format
+        )
+        for card_type, name in (("logo", logo_name), ("text", text_name), ("combo", combo_name)):
+            if card_type not in card_types:
+                continue
+            png_path = output_dir / f"{name}.png"
+            if not png_path.exists():
+                continue
+            images.append(Image.open(png_path).convert("RGB"))
+
+    if not images:
+        raise RuntimeError(
+            f"No PNG cards found in '{output_dir}' to assemble into PDF. "
+            "Generate PNG cards first."
+        )
+
+    if progress_callback:
+        progress_callback(f"  Building PDF: {len(images)} page(s)...")
+
+    pdf_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        images[0].save(
+            pdf_path,
+            save_all=True,
+            append_images=images[1:],
+            resolution=dpi,
+        )
+    finally:
+        for img in images:
+            img.close()
+
+    return pdf_path

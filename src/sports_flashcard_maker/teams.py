@@ -7,6 +7,17 @@ import re
 
 CFB_TEAMS_ENDPOINT = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?limit=1000"
 
+# Per-conference ESPN endpoints — filtered by ESPN conference group ID.
+_CFB_CONF_URL = "https://site.api.espn.com/apis/site/v2/sports/football/college-football/teams?groups={}&limit=200"
+CFB_ACC_ENDPOINT     = _CFB_CONF_URL.format(1)
+CFB_BIG_12_ENDPOINT  = _CFB_CONF_URL.format(4)
+CFB_BIG_TEN_ENDPOINT = _CFB_CONF_URL.format(5)
+CFB_SEC_ENDPOINT     = _CFB_CONF_URL.format(8)
+CFB_PAC_12_ENDPOINT  = _CFB_CONF_URL.format(9)
+CFB_MAC_ENDPOINT     = _CFB_CONF_URL.format(15)
+CFB_AAC_ENDPOINT     = _CFB_CONF_URL.format(151)
+CFB_IVY_ENDPOINT     = _CFB_CONF_URL.format(22)
+
 
 @dataclass(frozen=True)
 class Team:
@@ -15,6 +26,17 @@ class Team:
     api_lookup_name: str | None = None
     location_name: str | None = None
     mascot_name: str | None = None
+    conference: str | None = None
+    conference_abbr: str | None = None
+    division: str | None = None
+
+
+@dataclass(frozen=True)
+class ConferenceEndpoint:
+    """Pairs an ESPN API URL with the conference metadata used to tag fetched teams."""
+    url: str
+    conference: str
+    conference_abbr: str
 
 
 @dataclass(frozen=True)
@@ -27,6 +49,9 @@ class FlashcardSet:
     output_folder: str
     teams: tuple[Team, ...]
     league_logo_url: str | None = None
+    default_conference: str | None = None
+    default_conference_abbr: str | None = None
+    source_api_endpoints: tuple[ConferenceEndpoint, ...] = ()
 
 
 def normalize_team_name(name: str) -> str:
@@ -72,175 +97,390 @@ def normalize_team_name(name: str) -> str:
 
 # ESPN logo slugs are not always the same as common abbreviations.
 MLB_TEAMS: tuple[Team, ...] = (
-    Team("Arizona Diamondbacks", "ari"),
-    Team("Atlanta Braves", "atl"),
-    Team("Baltimore Orioles", "bal"),
-    Team("Boston Red Sox", "bos"),
-    Team("Chicago Cubs", "chc"),
-    Team("Chicago White Sox", "chw"),
-    Team("Cincinnati Reds", "cin"),
-    Team("Cleveland Guardians", "cle"),
-    Team("Colorado Rockies", "col"),
-    Team("Detroit Tigers", "det"),
-    Team("Houston Astros", "hou"),
-    Team("Kansas City Royals", "kc"),
-    Team("Los Angeles Angels", "laa"),
-    Team("Los Angeles Dodgers", "lad"),
-    Team("Miami Marlins", "mia"),
-    Team("Milwaukee Brewers", "mil"),
-    Team("Minnesota Twins", "min"),
-    Team("New York Mets", "nym"),
-    Team("New York Yankees", "nyy"),
-    Team("Athletics", "oak"),
-    Team("Philadelphia Phillies", "phi"),
-    Team("Pittsburgh Pirates", "pit"),
-    Team("San Diego Padres", "sd"),
-    Team("San Francisco Giants", "sf"),
-    Team("Seattle Mariners", "sea"),
-    Team("St. Louis Cardinals", "stl"),
-    Team("Tampa Bay Rays", "tb"),
-    Team("Texas Rangers", "tex"),
-    Team("Toronto Blue Jays", "tor"),
-    Team("Washington Nationals", "wsh"),
+    Team("Arizona Diamondbacks",  "ari", conference="National League",  conference_abbr="NL", division="West"),
+    Team("Atlanta Braves",        "atl", conference="National League",  conference_abbr="NL", division="East"),
+    Team("Baltimore Orioles",     "bal", conference="American League",  conference_abbr="AL", division="East"),
+    Team("Boston Red Sox",        "bos", conference="American League",  conference_abbr="AL", division="East"),
+    Team("Chicago Cubs",          "chc", conference="National League",  conference_abbr="NL", division="Central"),
+    Team("Chicago White Sox",     "chw", conference="American League",  conference_abbr="AL", division="Central"),
+    Team("Cincinnati Reds",       "cin", conference="National League",  conference_abbr="NL", division="Central"),
+    Team("Cleveland Guardians",   "cle", conference="American League",  conference_abbr="AL", division="Central"),
+    Team("Colorado Rockies",      "col", conference="National League",  conference_abbr="NL", division="West"),
+    Team("Detroit Tigers",        "det", conference="American League",  conference_abbr="AL", division="Central"),
+    Team("Houston Astros",        "hou", conference="American League",  conference_abbr="AL", division="West"),
+    Team("Kansas City Royals",    "kc",  conference="American League",  conference_abbr="AL", division="Central"),
+    Team("Los Angeles Angels",    "laa", conference="American League",  conference_abbr="AL", division="West"),
+    Team("Los Angeles Dodgers",   "lad", conference="National League",  conference_abbr="NL", division="West"),
+    Team("Miami Marlins",         "mia", conference="National League",  conference_abbr="NL", division="East"),
+    Team("Milwaukee Brewers",     "mil", conference="National League",  conference_abbr="NL", division="Central"),
+    Team("Minnesota Twins",       "min", conference="American League",  conference_abbr="AL", division="Central"),
+    Team("New York Mets",         "nym", conference="National League",  conference_abbr="NL", division="East"),
+    Team("New York Yankees",      "nyy", conference="American League",  conference_abbr="AL", division="East"),
+    Team("Athletics",             "oak", conference="American League",  conference_abbr="AL", division="West"),
+    Team("Philadelphia Phillies", "phi", conference="National League",  conference_abbr="NL", division="East"),
+    Team("Pittsburgh Pirates",    "pit", conference="National League",  conference_abbr="NL", division="Central"),
+    Team("San Diego Padres",      "sd",  conference="National League",  conference_abbr="NL", division="West"),
+    Team("San Francisco Giants",  "sf",  conference="National League",  conference_abbr="NL", division="West"),
+    Team("Seattle Mariners",      "sea", conference="American League",  conference_abbr="AL", division="West"),
+    Team("St. Louis Cardinals",   "stl", conference="National League",  conference_abbr="NL", division="Central"),
+    Team("Tampa Bay Rays",        "tb",  conference="American League",  conference_abbr="AL", division="East"),
+    Team("Texas Rangers",         "tex", conference="American League",  conference_abbr="AL", division="West"),
+    Team("Toronto Blue Jays",     "tor", conference="American League",  conference_abbr="AL", division="East"),
+    Team("Washington Nationals",  "wsh", conference="National League",  conference_abbr="NL", division="East"),
 )
 
 
 ACC_TEAMS: tuple[Team, ...] = (
-    Team("Boston College", api_lookup_name="Boston College"),
-    Team("California", api_lookup_name="California"),
-    Team("Clemson", api_lookup_name="Clemson"),
-    Team("Duke", api_lookup_name="Duke"),
-    Team("Florida State", api_lookup_name="Florida St"),
-    Team("Georgia Tech", api_lookup_name="Georgia Tech"),
-    Team("Louisville", api_lookup_name="Louisville"),
-    Team("Miami", api_lookup_name="Miami"),
-    Team("NC State", api_lookup_name="NC State"),
-    Team("North Carolina", api_lookup_name="North Carolina"),
-    Team("Notre Dame", api_lookup_name="Notre Dame"),
-    Team("Pittsburgh", api_lookup_name="Pitt"),
-    Team("SMU", api_lookup_name="SMU"),
-    Team("Stanford", api_lookup_name="Stanford"),
-    Team("Syracuse", api_lookup_name="Syracuse"),
-    Team("Virginia", api_lookup_name="Virginia"),
-    Team("Virginia Tech", api_lookup_name="Virginia Tech"),
-    Team("Wake Forest", api_lookup_name="Wake Forest"),
+    Team("Boston College",  api_lookup_name="Boston College",  conference="ACC", conference_abbr="ACC"),
+    Team("California",      api_lookup_name="California",      conference="ACC", conference_abbr="ACC"),
+    Team("Clemson",         api_lookup_name="Clemson",         conference="ACC", conference_abbr="ACC"),
+    Team("Duke",            api_lookup_name="Duke",            conference="ACC", conference_abbr="ACC"),
+    Team("Florida State",   api_lookup_name="Florida St",      conference="ACC", conference_abbr="ACC"),
+    Team("Georgia Tech",    api_lookup_name="Georgia Tech",    conference="ACC", conference_abbr="ACC"),
+    Team("Louisville",      api_lookup_name="Louisville",      conference="ACC", conference_abbr="ACC"),
+    Team("Miami",           api_lookup_name="Miami",           conference="ACC", conference_abbr="ACC"),
+    Team("NC State",        api_lookup_name="NC State",        conference="ACC", conference_abbr="ACC"),
+    Team("North Carolina",  api_lookup_name="North Carolina",  conference="ACC", conference_abbr="ACC"),
+    Team("Notre Dame",      api_lookup_name="Notre Dame",      conference="ACC", conference_abbr="ACC"),
+    Team("Pittsburgh",      api_lookup_name="Pitt",            conference="ACC", conference_abbr="ACC"),
+    Team("SMU",             api_lookup_name="SMU",             conference="ACC", conference_abbr="ACC"),
+    Team("Stanford",        api_lookup_name="Stanford",        conference="ACC", conference_abbr="ACC"),
+    Team("Syracuse",        api_lookup_name="Syracuse",        conference="ACC", conference_abbr="ACC"),
+    Team("Virginia",        api_lookup_name="Virginia",        conference="ACC", conference_abbr="ACC"),
+    Team("Virginia Tech",   api_lookup_name="Virginia Tech",   conference="ACC", conference_abbr="ACC"),
+    Team("Wake Forest",     api_lookup_name="Wake Forest",     conference="ACC", conference_abbr="ACC"),
 )
 
 
 BIG_TEN_TEAMS: tuple[Team, ...] = (
-    Team("Illinois", api_lookup_name="Illinois"),
-    Team("Indiana", api_lookup_name="Indiana"),
-    Team("Iowa", api_lookup_name="Iowa"),
-    Team("Maryland", api_lookup_name="Maryland"),
-    Team("Michigan", api_lookup_name="Michigan"),
-    Team("Michigan State", api_lookup_name="Michigan St"),
-    Team("Minnesota", api_lookup_name="Minnesota"),
-    Team("Nebraska", api_lookup_name="Nebraska"),
-    Team("Northwestern", api_lookup_name="Northwestern"),
-    Team("Ohio State", api_lookup_name="Ohio State"),
-    Team("Oregon", api_lookup_name="Oregon"),
-    Team("Penn State", api_lookup_name="Penn State"),
-    Team("Purdue", api_lookup_name="Purdue"),
-    Team("Rutgers", api_lookup_name="Rutgers"),
-    Team("UCLA", api_lookup_name="UCLA"),
-    Team("USC", api_lookup_name="USC"),
-    Team("Washington", api_lookup_name="Washington"),
-    Team("Wisconsin", api_lookup_name="Wisconsin"),
+    Team("Illinois",       api_lookup_name="Illinois",     conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Indiana",        api_lookup_name="Indiana",      conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Iowa",           api_lookup_name="Iowa",         conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Maryland",       api_lookup_name="Maryland",     conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Michigan",       api_lookup_name="Michigan",     conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Michigan State", api_lookup_name="Michigan St",  conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Minnesota",      api_lookup_name="Minnesota",    conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Nebraska",       api_lookup_name="Nebraska",     conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Northwestern",   api_lookup_name="Northwestern", conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Ohio State",     api_lookup_name="Ohio State",   conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Oregon",         api_lookup_name="Oregon",       conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Penn State",     api_lookup_name="Penn State",   conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Purdue",         api_lookup_name="Purdue",       conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Rutgers",        api_lookup_name="Rutgers",      conference="Big Ten", conference_abbr="Big Ten"),
+    Team("UCLA",           api_lookup_name="UCLA",         conference="Big Ten", conference_abbr="Big Ten"),
+    Team("USC",            api_lookup_name="USC",          conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Washington",     api_lookup_name="Washington",   conference="Big Ten", conference_abbr="Big Ten"),
+    Team("Wisconsin",      api_lookup_name="Wisconsin",    conference="Big Ten", conference_abbr="Big Ten"),
 )
 
 
 BIG_12_TEAMS: tuple[Team, ...] = (
-    Team("Arizona", api_lookup_name="Arizona"),
-    Team("Arizona State", api_lookup_name="Arizona St"),
-    Team("Baylor", api_lookup_name="Baylor"),
-    Team("BYU", api_lookup_name="BYU"),
-    Team("Cincinnati", api_lookup_name="Cincinnati"),
-    Team("Colorado", api_lookup_name="Colorado"),
-    Team("Houston", api_lookup_name="Houston"),
-    Team("Iowa State", api_lookup_name="Iowa State"),
-    Team("Kansas", api_lookup_name="Kansas"),
-    Team("Kansas State", api_lookup_name="Kansas St"),
-    Team("Oklahoma State", api_lookup_name="Oklahoma St"),
-    Team("TCU", api_lookup_name="TCU"),
-    Team("Texas Tech", api_lookup_name="Texas Tech"),
-    Team("UCF", api_lookup_name="UCF"),
-    Team("Utah", api_lookup_name="Utah"),
-    Team("West Virginia", api_lookup_name="West Virginia"),
+    Team("Arizona",       api_lookup_name="Arizona",       conference="Big 12", conference_abbr="Big 12"),
+    Team("Arizona State", api_lookup_name="Arizona St",    conference="Big 12", conference_abbr="Big 12"),
+    Team("Baylor",        api_lookup_name="Baylor",        conference="Big 12", conference_abbr="Big 12"),
+    Team("BYU",           api_lookup_name="BYU",           conference="Big 12", conference_abbr="Big 12"),
+    Team("Cincinnati",    api_lookup_name="Cincinnati",    conference="Big 12", conference_abbr="Big 12"),
+    Team("Colorado",      api_lookup_name="Colorado",      conference="Big 12", conference_abbr="Big 12"),
+    Team("Houston",       api_lookup_name="Houston",       conference="Big 12", conference_abbr="Big 12"),
+    Team("Iowa State",    api_lookup_name="Iowa State",    conference="Big 12", conference_abbr="Big 12"),
+    Team("Kansas",        api_lookup_name="Kansas",        conference="Big 12", conference_abbr="Big 12"),
+    Team("Kansas State",  api_lookup_name="Kansas St",     conference="Big 12", conference_abbr="Big 12"),
+    Team("Oklahoma State",api_lookup_name="Oklahoma St",   conference="Big 12", conference_abbr="Big 12"),
+    Team("TCU",           api_lookup_name="TCU",           conference="Big 12", conference_abbr="Big 12"),
+    Team("Texas Tech",    api_lookup_name="Texas Tech",    conference="Big 12", conference_abbr="Big 12"),
+    Team("UCF",           api_lookup_name="UCF",           conference="Big 12", conference_abbr="Big 12"),
+    Team("Utah",          api_lookup_name="Utah",          conference="Big 12", conference_abbr="Big 12"),
+    Team("West Virginia", api_lookup_name="West Virginia", conference="Big 12", conference_abbr="Big 12"),
 )
 
 
 SEC_TEAMS: tuple[Team, ...] = (
-    Team("Alabama", api_lookup_name="Alabama"),
-    Team("Arkansas", api_lookup_name="Arkansas"),
-    Team("Auburn", api_lookup_name="Auburn"),
-    Team("Florida", api_lookup_name="Florida"),
-    Team("Georgia", api_lookup_name="Georgia"),
-    Team("Kentucky", api_lookup_name="Kentucky"),
-    Team("LSU", api_lookup_name="LSU"),
-    Team("Mississippi State", api_lookup_name="Mississippi St"),
-    Team("Missouri", api_lookup_name="Missouri"),
-    Team("Oklahoma", api_lookup_name="Oklahoma"),
-    Team("Ole Miss", api_lookup_name="Ole Miss"),
-    Team("South Carolina", api_lookup_name="South Carolina"),
-    Team("Tennessee", api_lookup_name="Tennessee"),
-    Team("Texas", api_lookup_name="Texas"),
-    Team("Texas A&M", api_lookup_name="Texas A&M"),
-    Team("Vanderbilt", api_lookup_name="Vanderbilt"),
+    Team("Alabama",          api_lookup_name="Alabama",         conference="SEC", conference_abbr="SEC"),
+    Team("Arkansas",         api_lookup_name="Arkansas",        conference="SEC", conference_abbr="SEC"),
+    Team("Auburn",           api_lookup_name="Auburn",          conference="SEC", conference_abbr="SEC"),
+    Team("Florida",          api_lookup_name="Florida",         conference="SEC", conference_abbr="SEC"),
+    Team("Georgia",          api_lookup_name="Georgia",         conference="SEC", conference_abbr="SEC"),
+    Team("Kentucky",         api_lookup_name="Kentucky",        conference="SEC", conference_abbr="SEC"),
+    Team("LSU",              api_lookup_name="LSU",             conference="SEC", conference_abbr="SEC"),
+    Team("Mississippi State",api_lookup_name="Mississippi St",  conference="SEC", conference_abbr="SEC"),
+    Team("Missouri",         api_lookup_name="Missouri",        conference="SEC", conference_abbr="SEC"),
+    Team("Oklahoma",         api_lookup_name="Oklahoma",        conference="SEC", conference_abbr="SEC"),
+    Team("Ole Miss",         api_lookup_name="Ole Miss",        conference="SEC", conference_abbr="SEC"),
+    Team("South Carolina",   api_lookup_name="South Carolina",  conference="SEC", conference_abbr="SEC"),
+    Team("Tennessee",        api_lookup_name="Tennessee",       conference="SEC", conference_abbr="SEC"),
+    Team("Texas",            api_lookup_name="Texas",           conference="SEC", conference_abbr="SEC"),
+    Team("Texas A&M",        api_lookup_name="Texas A&M",       conference="SEC", conference_abbr="SEC"),
+    Team("Vanderbilt",       api_lookup_name="Vanderbilt",      conference="SEC", conference_abbr="SEC"),
 )
 
 
 MAC_TEAMS: tuple[Team, ...] = (
-    Team("Akron", api_lookup_name="Akron"),
-    Team("Ball State", api_lookup_name="Ball State"),
-    Team("Bowling Green", api_lookup_name="Bowling Green"),
-    Team("Buffalo", api_lookup_name="Buffalo"),
-    Team("Central Michigan", api_lookup_name="C Michigan"),
-    Team("Eastern Michigan", api_lookup_name="E Michigan"),
-    Team("Kent State", api_lookup_name="Kent State"),
-    Team("Miami", api_lookup_name="Miami OH"),
-    Team("Northern Illinois", api_lookup_name="N Illinois"),
-    Team("Ohio", api_lookup_name="Ohio"),
-    Team("Toledo", api_lookup_name="Toledo"),
-    Team("Western Michigan", api_lookup_name="W Michigan"),
+    Team("Akron",             api_lookup_name="Akron",         conference="MAC", conference_abbr="MAC"),
+    Team("Ball State",        api_lookup_name="Ball State",    conference="MAC", conference_abbr="MAC"),
+    Team("Bowling Green",     api_lookup_name="Bowling Green", conference="MAC", conference_abbr="MAC"),
+    Team("Buffalo",           api_lookup_name="Buffalo",       conference="MAC", conference_abbr="MAC"),
+    Team("Central Michigan",  api_lookup_name="C Michigan",    conference="MAC", conference_abbr="MAC"),
+    Team("Eastern Michigan",  api_lookup_name="E Michigan",    conference="MAC", conference_abbr="MAC"),
+    Team("Kent State",        api_lookup_name="Kent State",    conference="MAC", conference_abbr="MAC"),
+    Team("Miami",             api_lookup_name="Miami OH",      conference="MAC", conference_abbr="MAC"),
+    Team("Northern Illinois", api_lookup_name="N Illinois",    conference="MAC", conference_abbr="MAC"),
+    Team("Ohio",              api_lookup_name="Ohio",          conference="MAC", conference_abbr="MAC"),
+    Team("Toledo",            api_lookup_name="Toledo",        conference="MAC", conference_abbr="MAC"),
+    Team("Western Michigan",  api_lookup_name="W Michigan",    conference="MAC", conference_abbr="MAC"),
 )
 
 
 AAC_TEAMS: tuple[Team, ...] = (
-    Team("East Carolina", api_lookup_name="East Carolina"),
-    Team("Houston", api_lookup_name="Houston"),
-    Team("Memphis", api_lookup_name="Memphis"),
-    Team("SMU", api_lookup_name="SMU"),
-    Team("South Florida", api_lookup_name="South Florida"),
-    Team("Temple", api_lookup_name="Temple"),
-    Team("Tulane", api_lookup_name="Tulane"),
-    Team("Tulsa", api_lookup_name="Tulsa"),
+    Team("East Carolina", api_lookup_name="East Carolina",  conference="AAC", conference_abbr="AAC"),
+    Team("Houston",       api_lookup_name="Houston",        conference="AAC", conference_abbr="AAC"),
+    Team("Memphis",       api_lookup_name="Memphis",        conference="AAC", conference_abbr="AAC"),
+    Team("SMU",           api_lookup_name="SMU",            conference="AAC", conference_abbr="AAC"),
+    Team("South Florida", api_lookup_name="South Florida",  conference="AAC", conference_abbr="AAC"),
+    Team("Temple",        api_lookup_name="Temple",         conference="AAC", conference_abbr="AAC"),
+    Team("Tulane",        api_lookup_name="Tulane",         conference="AAC", conference_abbr="AAC"),
+    Team("Tulsa",         api_lookup_name="Tulsa",          conference="AAC", conference_abbr="AAC"),
 )
 
 
 IVY_LEAGUE_TEAMS: tuple[Team, ...] = (
-    Team("Brown", api_lookup_name="Brown"),
-    Team("Columbia", api_lookup_name="Columbia"),
-    Team("Cornell", api_lookup_name="Cornell"),
-    Team("Dartmouth", api_lookup_name="Dartmouth"),
-    Team("Harvard", api_lookup_name="Harvard"),
-    Team("Pennsylvania", api_lookup_name="Penn"),
-    Team("Princeton", api_lookup_name="Princeton"),
-    Team("Yale", api_lookup_name="Yale"),
+    Team("Brown",        api_lookup_name="Brown",      conference="Ivy League", conference_abbr="Ivy"),
+    Team("Columbia",     api_lookup_name="Columbia",   conference="Ivy League", conference_abbr="Ivy"),
+    Team("Cornell",      api_lookup_name="Cornell",    conference="Ivy League", conference_abbr="Ivy"),
+    Team("Dartmouth",    api_lookup_name="Dartmouth",  conference="Ivy League", conference_abbr="Ivy"),
+    Team("Harvard",      api_lookup_name="Harvard",    conference="Ivy League", conference_abbr="Ivy"),
+    Team("Pennsylvania", api_lookup_name="Penn",       conference="Ivy League", conference_abbr="Ivy"),
+    Team("Princeton",    api_lookup_name="Princeton",  conference="Ivy League", conference_abbr="Ivy"),
+    Team("Yale",         api_lookup_name="Yale",       conference="Ivy League", conference_abbr="Ivy"),
 )
 
 
 PAC_12_TEAMS: tuple[Team, ...] = (
-    Team("Arizona", api_lookup_name="Arizona"),
-    Team("Arizona State", api_lookup_name="Arizona St"),
-    Team("California", api_lookup_name="California"),
-    Team("Colorado", api_lookup_name="Colorado"),
-    Team("Oregon", api_lookup_name="Oregon"),
-    Team("Oregon State", api_lookup_name="Oregon St"),
-    Team("Stanford", api_lookup_name="Stanford"),
-    Team("Utah", api_lookup_name="Utah"),
-    Team("Washington", api_lookup_name="Washington"),
-    Team("Washington State", api_lookup_name="Washington St"),
+    Team("Arizona",        api_lookup_name="Arizona",        conference="Pac-12", conference_abbr="Pac-12"),
+    Team("Arizona State",  api_lookup_name="Arizona St",     conference="Pac-12", conference_abbr="Pac-12"),
+    Team("California",     api_lookup_name="California",     conference="Pac-12", conference_abbr="Pac-12"),
+    Team("Colorado",       api_lookup_name="Colorado",       conference="Pac-12", conference_abbr="Pac-12"),
+    Team("Oregon",         api_lookup_name="Oregon",         conference="Pac-12", conference_abbr="Pac-12"),
+    Team("Oregon State",   api_lookup_name="Oregon St",      conference="Pac-12", conference_abbr="Pac-12"),
+    Team("Stanford",       api_lookup_name="Stanford",       conference="Pac-12", conference_abbr="Pac-12"),
+    Team("Utah",           api_lookup_name="Utah",           conference="Pac-12", conference_abbr="Pac-12"),
+    Team("Washington",     api_lookup_name="Washington",     conference="Pac-12", conference_abbr="Pac-12"),
+    Team("Washington State",api_lookup_name="Washington St", conference="Pac-12", conference_abbr="Pac-12"),
 )
+
+
+def _dedup_cfb_teams(*team_tuples: tuple[Team, ...]) -> tuple[Team, ...]:
+    """Combine multiple CFB conference tuples, keeping the first occurrence of each team.
+
+    Teams that appear in multiple tuples (due to conference realignment) are kept
+    under the conference of the first tuple they appear in.  The key is the
+    case-folded api_lookup_name (or display name when absent).
+    """
+    seen: set[str] = set()
+    result: list[Team] = []
+    for teams in team_tuples:
+        for team in teams:
+            key = (team.api_lookup_name or team.name).lower()
+            if key not in seen:
+                seen.add(key)
+                result.append(team)
+    return tuple(result)
+
+
+# Combined set of all supported CFB conferences.  Teams that appear in more than
+# one conference tuple (realignment artefacts) are kept under their current
+# conference — the order below is ACC → Big Ten → Big 12 → SEC → MAC → AAC →
+# Ivy League → Pac-12, so modern conferences take priority over the old Pac-12.
+CFB_ALL_TEAMS: tuple[Team, ...] = _dedup_cfb_teams(
+    ACC_TEAMS,
+    BIG_TEN_TEAMS,
+    BIG_12_TEAMS,
+    SEC_TEAMS,
+    MAC_TEAMS,
+    AAC_TEAMS,
+    IVY_LEAGUE_TEAMS,
+    PAC_12_TEAMS,
+)
+
+# Conference / division lookup for API-fetched sets.
+# Keys are lowercased team display names (as returned by ESPN API after normalize_team_name).
+# Values are (conference_full, conference_abbr, division_or_None).
+# Unknown teams simply get no conference data — handled gracefully.
+_CD = tuple[str | None, str | None, str | None]  # type alias for readability
+CONFERENCE_LOOKUP: dict[str, dict[str, _CD]] = {
+    "nfl": {
+        # AFC East
+        "buffalo bills":           ("American Football Conference", "AFC", "East"),
+        "miami dolphins":          ("American Football Conference", "AFC", "East"),
+        "new england patriots":    ("American Football Conference", "AFC", "East"),
+        "new york jets":           ("American Football Conference", "AFC", "East"),
+        # AFC North
+        "baltimore ravens":        ("American Football Conference", "AFC", "North"),
+        "cincinnati bengals":      ("American Football Conference", "AFC", "North"),
+        "cleveland browns":        ("American Football Conference", "AFC", "North"),
+        "pittsburgh steelers":     ("American Football Conference", "AFC", "North"),
+        # AFC South
+        "houston texans":          ("American Football Conference", "AFC", "South"),
+        "indianapolis colts":      ("American Football Conference", "AFC", "South"),
+        "jacksonville jaguars":    ("American Football Conference", "AFC", "South"),
+        "tennessee titans":        ("American Football Conference", "AFC", "South"),
+        # AFC West
+        "denver broncos":          ("American Football Conference", "AFC", "West"),
+        "kansas city chiefs":      ("American Football Conference", "AFC", "West"),
+        "las vegas raiders":       ("American Football Conference", "AFC", "West"),
+        "los angeles chargers":    ("American Football Conference", "AFC", "West"),
+        # NFC East
+        "dallas cowboys":          ("National Football Conference", "NFC", "East"),
+        "new york giants":         ("National Football Conference", "NFC", "East"),
+        "philadelphia eagles":     ("National Football Conference", "NFC", "East"),
+        "washington commanders":   ("National Football Conference", "NFC", "East"),
+        # NFC North
+        "chicago bears":           ("National Football Conference", "NFC", "North"),
+        "detroit lions":           ("National Football Conference", "NFC", "North"),
+        "green bay packers":       ("National Football Conference", "NFC", "North"),
+        "minnesota vikings":       ("National Football Conference", "NFC", "North"),
+        # NFC South
+        "atlanta falcons":         ("National Football Conference", "NFC", "South"),
+        "carolina panthers":       ("National Football Conference", "NFC", "South"),
+        "new orleans saints":      ("National Football Conference", "NFC", "South"),
+        "tampa bay buccaneers":    ("National Football Conference", "NFC", "South"),
+        # NFC West
+        "arizona cardinals":       ("National Football Conference", "NFC", "West"),
+        "los angeles rams":        ("National Football Conference", "NFC", "West"),
+        "san francisco 49ers":     ("National Football Conference", "NFC", "West"),
+        "seattle seahawks":        ("National Football Conference", "NFC", "West"),
+    },
+    "nba": {
+        # Eastern / Atlantic
+        "boston celtics":          ("Eastern Conference", "Eastern", "Atlantic"),
+        "brooklyn nets":           ("Eastern Conference", "Eastern", "Atlantic"),
+        "new york knicks":         ("Eastern Conference", "Eastern", "Atlantic"),
+        "philadelphia 76ers":      ("Eastern Conference", "Eastern", "Atlantic"),
+        "toronto raptors":         ("Eastern Conference", "Eastern", "Atlantic"),
+        # Eastern / Central
+        "chicago bulls":           ("Eastern Conference", "Eastern", "Central"),
+        "cleveland cavaliers":     ("Eastern Conference", "Eastern", "Central"),
+        "detroit pistons":         ("Eastern Conference", "Eastern", "Central"),
+        "indiana pacers":          ("Eastern Conference", "Eastern", "Central"),
+        "milwaukee bucks":         ("Eastern Conference", "Eastern", "Central"),
+        # Eastern / Southeast
+        "atlanta hawks":           ("Eastern Conference", "Eastern", "Southeast"),
+        "charlotte hornets":       ("Eastern Conference", "Eastern", "Southeast"),
+        "miami heat":              ("Eastern Conference", "Eastern", "Southeast"),
+        "orlando magic":           ("Eastern Conference", "Eastern", "Southeast"),
+        "washington wizards":      ("Eastern Conference", "Eastern", "Southeast"),
+        # Western / Northwest
+        "denver nuggets":          ("Western Conference", "Western", "Northwest"),
+        "minnesota timberwolves":  ("Western Conference", "Western", "Northwest"),
+        "oklahoma city thunder":   ("Western Conference", "Western", "Northwest"),
+        "portland trail blazers":  ("Western Conference", "Western", "Northwest"),
+        "utah jazz":               ("Western Conference", "Western", "Northwest"),
+        # Western / Pacific
+        "golden state warriors":   ("Western Conference", "Western", "Pacific"),
+        "los angeles clippers":    ("Western Conference", "Western", "Pacific"),
+        "los angeles lakers":      ("Western Conference", "Western", "Pacific"),
+        "phoenix suns":            ("Western Conference", "Western", "Pacific"),
+        "sacramento kings":        ("Western Conference", "Western", "Pacific"),
+        # Western / Southwest
+        "dallas mavericks":        ("Western Conference", "Western", "Southwest"),
+        "houston rockets":         ("Western Conference", "Western", "Southwest"),
+        "memphis grizzlies":       ("Western Conference", "Western", "Southwest"),
+        "new orleans pelicans":    ("Western Conference", "Western", "Southwest"),
+        "san antonio spurs":       ("Western Conference", "Western", "Southwest"),
+    },
+    "nhl": {
+        # Eastern / Atlantic
+        "boston bruins":           ("Eastern Conference", "Eastern", "Atlantic"),
+        "buffalo sabres":          ("Eastern Conference", "Eastern", "Atlantic"),
+        "detroit red wings":       ("Eastern Conference", "Eastern", "Atlantic"),
+        "florida panthers":        ("Eastern Conference", "Eastern", "Atlantic"),
+        "montréal canadiens":      ("Eastern Conference", "Eastern", "Atlantic"),
+        "montreal canadiens":      ("Eastern Conference", "Eastern", "Atlantic"),
+        "ottawa senators":         ("Eastern Conference", "Eastern", "Atlantic"),
+        "tampa bay lightning":     ("Eastern Conference", "Eastern", "Atlantic"),
+        "toronto maple leafs":     ("Eastern Conference", "Eastern", "Atlantic"),
+        # Eastern / Metropolitan
+        "carolina hurricanes":     ("Eastern Conference", "Eastern", "Metropolitan"),
+        "columbus blue jackets":   ("Eastern Conference", "Eastern", "Metropolitan"),
+        "new jersey devils":       ("Eastern Conference", "Eastern", "Metropolitan"),
+        "new york islanders":      ("Eastern Conference", "Eastern", "Metropolitan"),
+        "new york rangers":        ("Eastern Conference", "Eastern", "Metropolitan"),
+        "philadelphia flyers":     ("Eastern Conference", "Eastern", "Metropolitan"),
+        "pittsburgh penguins":     ("Eastern Conference", "Eastern", "Metropolitan"),
+        "washington capitals":     ("Eastern Conference", "Eastern", "Metropolitan"),
+        # Western / Central
+        "chicago blackhawks":      ("Western Conference", "Western", "Central"),
+        "colorado avalanche":      ("Western Conference", "Western", "Central"),
+        "dallas stars":            ("Western Conference", "Western", "Central"),
+        "minnesota wild":          ("Western Conference", "Western", "Central"),
+        "nashville predators":     ("Western Conference", "Western", "Central"),
+        "st. louis blues":         ("Western Conference", "Western", "Central"),
+        "utah hockey club":        ("Western Conference", "Western", "Central"),
+        "winnipeg jets":           ("Western Conference", "Western", "Central"),
+        # Western / Pacific
+        "anaheim ducks":           ("Western Conference", "Western", "Pacific"),
+        "calgary flames":          ("Western Conference", "Western", "Pacific"),
+        "edmonton oilers":         ("Western Conference", "Western", "Pacific"),
+        "los angeles kings":       ("Western Conference", "Western", "Pacific"),
+        "san jose sharks":         ("Western Conference", "Western", "Pacific"),
+        "seattle kraken":          ("Western Conference", "Western", "Pacific"),
+        "vancouver canucks":       ("Western Conference", "Western", "Pacific"),
+        "vegas golden knights":    ("Western Conference", "Western", "Pacific"),
+    },
+    "wnba": {
+        # Eastern Conference (no divisions)
+        "atlanta dream":           ("Eastern Conference", "Eastern", None),
+        "chicago sky":             ("Eastern Conference", "Eastern", None),
+        "connecticut sun":         ("Eastern Conference", "Eastern", None),
+        "indiana fever":           ("Eastern Conference", "Eastern", None),
+        "new york liberty":        ("Eastern Conference", "Eastern", None),
+        "toronto tempo":           ("Eastern Conference", "Eastern", None),
+        "washington mystics":      ("Eastern Conference", "Eastern", None),
+        # Western Conference (no divisions)
+        "dallas wings":            ("Western Conference", "Western", None),
+        "golden state valkyries":  ("Western Conference", "Western", None),
+        "las vegas aces":          ("Western Conference", "Western", None),
+        "los angeles sparks":      ("Western Conference", "Western", None),
+        "minnesota lynx":          ("Western Conference", "Western", None),
+        "phoenix mercury":         ("Western Conference", "Western", None),
+        "seattle storm":           ("Western Conference", "Western", None),
+    },
+    "mls": {
+        # Eastern Conference (no divisions)
+        "atlanta united fc":       ("Eastern Conference", "Eastern", None),
+        "cf montréal":             ("Eastern Conference", "Eastern", None),
+        "cf montreal":             ("Eastern Conference", "Eastern", None),
+        "charlotte fc":            ("Eastern Conference", "Eastern", None),
+        "chicago fire fc":         ("Eastern Conference", "Eastern", None),
+        "columbus crew":           ("Eastern Conference", "Eastern", None),
+        "d.c. united":             ("Eastern Conference", "Eastern", None),
+        "fc cincinnati":           ("Eastern Conference", "Eastern", None),
+        "inter miami cf":          ("Eastern Conference", "Eastern", None),
+        "nashville sc":            ("Eastern Conference", "Eastern", None),
+        "new england revolution":  ("Eastern Conference", "Eastern", None),
+        "new york city fc":        ("Eastern Conference", "Eastern", None),
+        "new york red bulls":      ("Eastern Conference", "Eastern", None),
+        "orlando city sc":         ("Eastern Conference", "Eastern", None),
+        "philadelphia union":      ("Eastern Conference", "Eastern", None),
+        "toronto fc":              ("Eastern Conference", "Eastern", None),
+        # Western Conference (no divisions)
+        "austin fc":               ("Western Conference", "Western", None),
+        "colorado rapids":         ("Western Conference", "Western", None),
+        "fc dallas":               ("Western Conference", "Western", None),
+        "houston dynamo fc":       ("Western Conference", "Western", None),
+        "l.a. galaxy":             ("Western Conference", "Western", None),
+        "la galaxy":               ("Western Conference", "Western", None),
+        "lafc":                    ("Western Conference", "Western", None),
+        "los angeles fc":          ("Western Conference", "Western", None),
+        "minnesota united fc":     ("Western Conference", "Western", None),
+        "portland timbers":        ("Western Conference", "Western", None),
+        "real salt lake":          ("Western Conference", "Western", None),
+        "san diego fc":            ("Western Conference", "Western", None),
+        "san jose earthquakes":    ("Western Conference", "Western", None),
+        "seattle sounders fc":     ("Western Conference", "Western", None),
+        "sporting kansas city":    ("Western Conference", "Western", None),
+        "vancouver whitecaps fc":  ("Western Conference", "Western", None),
+    },
+}
 
 
 FLASHCARD_SETS: dict[str, FlashcardSet] = {
@@ -259,9 +499,11 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         display_name="ACC",
         source_mode="espn_cfb_api",
         source_template=None,
-        source_api_endpoint=CFB_TEAMS_ENDPOINT,
+        source_api_endpoint=CFB_ACC_ENDPOINT,
         output_folder="ACC",
-        teams=ACC_TEAMS,
+        teams=(),
+        default_conference="ACC",
+        default_conference_abbr="ACC",
         league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/acc.png",
     ),
     "big_ten": FlashcardSet(
@@ -269,9 +511,11 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         display_name="Big Ten",
         source_mode="espn_cfb_api",
         source_template=None,
-        source_api_endpoint=CFB_TEAMS_ENDPOINT,
+        source_api_endpoint=CFB_BIG_TEN_ENDPOINT,
         output_folder="BIG_TEN",
-        teams=BIG_TEN_TEAMS,
+        teams=(),
+        default_conference="Big Ten",
+        default_conference_abbr="Big Ten",
         league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/big_ten.png",
     ),
     "big_12": FlashcardSet(
@@ -279,9 +523,11 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         display_name="Big 12",
         source_mode="espn_cfb_api",
         source_template=None,
-        source_api_endpoint=CFB_TEAMS_ENDPOINT,
+        source_api_endpoint=CFB_BIG_12_ENDPOINT,
         output_folder="BIG_12",
-        teams=BIG_12_TEAMS,
+        teams=(),
+        default_conference="Big 12",
+        default_conference_abbr="Big 12",
         league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/big12.png",
     ),
     "sec": FlashcardSet(
@@ -289,9 +535,11 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         display_name="SEC",
         source_mode="espn_cfb_api",
         source_template=None,
-        source_api_endpoint=CFB_TEAMS_ENDPOINT,
+        source_api_endpoint=CFB_SEC_ENDPOINT,
         output_folder="SEC",
-        teams=SEC_TEAMS,
+        teams=(),
+        default_conference="SEC",
+        default_conference_abbr="SEC",
         league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/sec.png",
     ),
     "mac": FlashcardSet(
@@ -299,9 +547,11 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         display_name="MAC",
         source_mode="espn_cfb_api",
         source_template=None,
-        source_api_endpoint=CFB_TEAMS_ENDPOINT,
+        source_api_endpoint=CFB_MAC_ENDPOINT,
         output_folder="MAC",
-        teams=MAC_TEAMS,
+        teams=(),
+        default_conference="MAC",
+        default_conference_abbr="MAC",
         league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/mac.png",
     ),
     "aac": FlashcardSet(
@@ -309,9 +559,11 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         display_name="AAC",
         source_mode="espn_cfb_api",
         source_template=None,
-        source_api_endpoint=CFB_TEAMS_ENDPOINT,
+        source_api_endpoint=CFB_AAC_ENDPOINT,
         output_folder="AAC",
-        teams=AAC_TEAMS,
+        teams=(),
+        default_conference="AAC",
+        default_conference_abbr="AAC",
         league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/aac.png",
     ),
     "ivy_league": FlashcardSet(
@@ -319,9 +571,11 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         display_name="Ivy League",
         source_mode="espn_cfb_api",
         source_template=None,
-        source_api_endpoint=CFB_TEAMS_ENDPOINT,
+        source_api_endpoint=CFB_IVY_ENDPOINT,
         output_folder="IVY_LEAGUE",
-        teams=IVY_LEAGUE_TEAMS,
+        teams=(),
+        default_conference="Ivy League",
+        default_conference_abbr="Ivy",
         league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/ivy.png",
     ),
     "pac_12": FlashcardSet(
@@ -329,10 +583,31 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         display_name="Pac-12",
         source_mode="espn_cfb_api",
         source_template=None,
-        source_api_endpoint=CFB_TEAMS_ENDPOINT,
+        source_api_endpoint=CFB_PAC_12_ENDPOINT,
         output_folder="PAC_12",
-        teams=PAC_12_TEAMS,
+        teams=(),
+        default_conference="Pac-12",
+        default_conference_abbr="Pac-12",
         league_logo_url="https://a.espncdn.com/i/teamlogos/ncaa_conf/500/pac12.png",
+    ),
+    "cfb_all": FlashcardSet(
+        code="cfb_all",
+        display_name="All Conferences",
+        source_mode="espn_cfb_api",
+        source_template=None,
+        source_api_endpoint=None,
+        source_api_endpoints=(
+            ConferenceEndpoint(CFB_ACC_ENDPOINT,     "ACC",        "ACC"),
+            ConferenceEndpoint(CFB_BIG_TEN_ENDPOINT, "Big Ten",    "Big Ten"),
+            ConferenceEndpoint(CFB_BIG_12_ENDPOINT,  "Big 12",     "Big 12"),
+            ConferenceEndpoint(CFB_SEC_ENDPOINT,     "SEC",        "SEC"),
+            ConferenceEndpoint(CFB_MAC_ENDPOINT,     "MAC",        "MAC"),
+            ConferenceEndpoint(CFB_AAC_ENDPOINT,     "AAC",        "AAC"),
+            ConferenceEndpoint(CFB_IVY_ENDPOINT,     "Ivy League", "Ivy"),
+            ConferenceEndpoint(CFB_PAC_12_ENDPOINT,  "Pac-12",     "Pac-12"),
+        ),
+        output_folder="CFB_ALL",
+        teams=(),
     ),
     "nfl": FlashcardSet(
         code="nfl",

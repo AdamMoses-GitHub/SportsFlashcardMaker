@@ -107,6 +107,34 @@ def parse_args() -> argparse.Namespace:
         default="none",
         help="Overlay the league/conference logo in a corner of every card. Defaults to none (disabled).",
     )
+    parser.add_argument(
+        "--show-conference",
+        dest="show_conference",
+        action="store_true",
+        default=False,
+        help="Show conference/division below the team name on text and combo cards.",
+    )
+    parser.add_argument(
+        "--abbreviate-conference",
+        dest="abbreviate_conference",
+        action="store_true",
+        default=False,
+        help="Use abbreviated conference names (e.g. 'AL' instead of 'American League'). Only applies when --show-conference is set.",
+    )
+    parser.add_argument(
+        "--index-corner",
+        dest="index_corner",
+        choices=["none", "top-left", "top-center", "top-right", "bottom-left", "bottom-center", "bottom-right"],
+        default="none",
+        help="Print a subtle card index (e.g. '1/18') in the specified corner of every card. Defaults to none (disabled).",
+    )
+    parser.add_argument(
+        "--force-refresh",
+        dest="force_refresh",
+        action="store_true",
+        default=False,
+        help="Re-download all logos even if cached copies already exist.",
+    )
     return parser.parse_args()
 
 
@@ -130,7 +158,11 @@ def cli_main() -> None:
             team_color=args.team_color,
             text_color=args.text_color,
             text_size=args.text_size,
+            show_conference=args.show_conference,
+            abbreviate_conference=args.abbreviate_conference,
+            index_corner=args.index_corner,
             league_logo_corner=args.league_logo_corner,
+            force_refresh=args.force_refresh,
         )
 
         if result["status"] == "error":
@@ -157,7 +189,11 @@ def cli_main() -> None:
         team_color=args.team_color,
         text_color=args.text_color,
         text_size=args.text_size,
+        show_conference=args.show_conference,
+        abbreviate_conference=args.abbreviate_conference,
+        index_corner=args.index_corner,
         league_logo_corner=args.league_logo_corner,
+        force_refresh=args.force_refresh,
     )
 
     print(

@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 
 from .download_logos import download_logos
-from .flashcards import build_flashcards
+from .flashcards import build_flashcards, build_flashcard_pdf
 from .teams import Team, format_output_filenames, get_flashcard_set
 
 
@@ -27,7 +27,15 @@ def _write_set_readme(
     team_color: str,
     text_color: str,
     text_size: str,
+    show_conference: bool,
+    abbreviate_conference: bool,
+    index_corner: str,
     league_logo_corner: str,
+    bg_color: str,
+    text_effect: str,
+    text_effect_color: str,
+    logo_filter: str,
+    pdf_output: bool,
     warnings: list[str],
 ) -> None:
     team_lines: list[str] = []
@@ -69,7 +77,15 @@ def _write_set_readme(
             f"- Team color: {team_color}",
             f"- Text color: {text_color}",
             f"- Text size: {text_size}",
+            f"- Show conference/division: {'yes' if show_conference else 'no'}",
+            f"- Abbreviate conference names: {'yes' if abbreviate_conference else 'no'}",
+            f"- Card index corner: {index_corner}",
             f"- League logo overlay: {league_logo_corner}",
+            f"- Background color: {bg_color}",
+            f"- Text effect: {text_effect}"
+            + (f" (color: {text_effect_color})" if text_effect != "none" else ""),
+            f"- Logo filter: {logo_filter}",
+            f"- PDF output: {'yes' if pdf_output else 'no'}",
             "",
             "## Teams And Created Files",
             *team_lines,
@@ -103,12 +119,21 @@ def generate_flashcards(
     team_color: str = "#b22222",
     text_color: str = "black",
     text_size: str = "large",
+    show_conference: bool = False,
+    abbreviate_conference: bool = False,
+    index_corner: str = "none",
     league_logo_corner: str = "none",
+    bg_color: str = "white",
+    text_effect: str = "none",
+    text_effect_color: str = "#888888",
+    logo_filter: str = "none",
+    pdf_output: bool = False,
+    force_refresh: bool = False,
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict[str, object]:
     """
     Generate flashcards for a given set.
-    
+
     Args:
         set_code: Code of the flashcard set (e.g., "mlb", "nfl", "acc")
         output_dir: Where to save generated flashcards. Defaults to output/{set_folder}/
@@ -170,6 +195,7 @@ def generate_flashcards(
             team_set,
             logos_dir,
             progress_callback=progress_callback,
+            force_refresh=force_refresh,
         )
         if not resolved_teams:
             raise RuntimeError(f"No teams found for set {team_set.code}.")
@@ -197,14 +223,40 @@ def generate_flashcards(
             team_color=team_color,
             text_color=text_color,
             text_size=text_size,
+            show_conference=show_conference,
+            abbreviate_conference=abbreviate_conference,
+            index_corner=index_corner,
             league_logo_path=league_logo_path,
             league_logo_corner=league_logo_corner,
+            bg_color=bg_color,
+            text_effect=text_effect,
+            text_effect_color=text_effect_color,
+            logo_filter=logo_filter,
             progress_callback=progress_callback,
         )
         if progress_callback:
             progress_callback(
                 f"  Finished set: {team_set.display_name} ({len(resolved_teams)} teams, {len(created_cards)} cards)"
             )
+
+        pdf_path_result: str | None = None
+        if pdf_output and created_cards:
+            pdf_file = output_dir / f"{set_code}_flashcards.pdf"
+            if progress_callback:
+                progress_callback(f"  Generating PDF: {pdf_file.name}...")
+            build_flashcard_pdf(
+                output_dir=output_dir,
+                teams=resolved_teams,
+                pdf_path=pdf_file,
+                card_types=card_types,
+                filename_format=filename_format,
+                name_format=name_format,
+                dpi=dpi,
+                progress_callback=progress_callback,
+            )
+            pdf_path_result = str(pdf_file.resolve())
+            if progress_callback:
+                progress_callback(f"  PDF saved: {pdf_file.name}")
 
         duplicate_structured_name_teams = [
             team.name
@@ -242,7 +294,15 @@ def generate_flashcards(
             team_color=team_color,
             text_color=text_color,
             text_size=text_size,
+            show_conference=show_conference,
+            abbreviate_conference=abbreviate_conference,
+            index_corner=index_corner,
             league_logo_corner=league_logo_corner,
+            bg_color=bg_color,
+            text_effect=text_effect,
+            text_effect_color=text_effect_color,
+            logo_filter=logo_filter,
+            pdf_output=pdf_output,
             warnings=warnings,
         )
         if progress_callback:
@@ -256,6 +316,7 @@ def generate_flashcards(
             "file_count": len(created_cards),
             "output_dir": str(output_dir.resolve()),
             "readme_path": str(readme_path.resolve()),
+            "pdf_path": pdf_path_result,
             "warnings": warnings,
         }
     
@@ -281,7 +342,16 @@ def generate_flashcards_batch(
     team_color: str = "#b22222",
     text_color: str = "black",
     text_size: str = "large",
+    show_conference: bool = False,
+    abbreviate_conference: bool = False,
+    index_corner: str = "none",
     league_logo_corner: str = "none",
+    bg_color: str = "white",
+    text_effect: str = "none",
+    text_effect_color: str = "#888888",
+    logo_filter: str = "none",
+    pdf_output: bool = False,
+    force_refresh: bool = False,
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict[str, object]:
     """Generate flashcards for multiple sets in sequence."""
@@ -327,7 +397,16 @@ def generate_flashcards_batch(
             team_color=team_color,
             text_color=text_color,
             text_size=text_size,
+            show_conference=show_conference,
+            abbreviate_conference=abbreviate_conference,
+            index_corner=index_corner,
             league_logo_corner=league_logo_corner,
+            bg_color=bg_color,
+            text_effect=text_effect,
+            text_effect_color=text_effect_color,
+            logo_filter=logo_filter,
+            pdf_output=pdf_output,
+            force_refresh=force_refresh,
             progress_callback=progress_callback,
         )
         results.append(result)
