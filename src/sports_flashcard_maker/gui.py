@@ -13,7 +13,7 @@ from pathlib import Path
 from tkinter import messagebox, ttk
 
 from .core import generate_flashcards_batch
-from .teams import FLASHCARD_SETS, Team, format_output_filenames
+from .teams import FLASHCARD_SETS, Team, format_output_filenames, APPROX_TEAM_COUNTS
 
 
 class FlashcardGeneratorGUI:
@@ -166,47 +166,119 @@ class FlashcardGeneratorGUI:
             var = tk.BooleanVar(value=code in default_selected)
             self.set_vars[code] = var
 
-            count = len(team_set.teams)
+            count = len(team_set.teams) or APPROX_TEAM_COUNTS.get(code, 0)
             text = f"{team_set.display_name} ({count})" if count else team_set.display_name
             chk = ttk.Checkbutton(pro_frame, text=text, variable=var, command=self._update_info)
             chk.grid(row=row, column=col, sticky="w", padx=(0, 14), pady=2)
 
-        # College Conferences — combined "all" set
-        cfb_all_frame = ttk.LabelFrame(sets_tab, text="College Football — Combined", padding=8)
-        cfb_all_frame.pack(fill="x", pady=(0, 6))
+        # ── NCAA Div I College Football ──────────────────────────────────────
+        ncaa_cfb_frame = ttk.LabelFrame(sets_tab, text="NCAA Div I College Football", padding=8)
+        ncaa_cfb_frame.pack(fill="x", pady=(0, 0))
 
-        cfb_all_set = FLASHCARD_SETS["cfb_all"]
-        cfb_all_var = tk.BooleanVar(value=False)
+        # Combined "all conferences" option
+        cfb_combined_row = ttk.Frame(ncaa_cfb_frame)
+        cfb_combined_row.pack(fill="x", pady=(0, 6))
+        _cfb_all_set = FLASHCARD_SETS["cfb_all"]
+        cfb_all_var = tk.BooleanVar(value="cfb_all" in default_selected)
         self.set_vars["cfb_all"] = cfb_all_var
+        cfb_all_count = len(_cfb_all_set.teams) or APPROX_TEAM_COUNTS.get("cfb_all", 0)
         ttk.Checkbutton(
-            cfb_all_frame,
-            text=f"{cfb_all_set.display_name} ({len(cfb_all_set.teams)})" if cfb_all_set.teams else cfb_all_set.display_name,
+            cfb_combined_row,
+            text=f"{_cfb_all_set.display_name} ({cfb_all_count})" if cfb_all_count else _cfb_all_set.display_name,
             variable=cfb_all_var,
             command=self._update_info,
         ).pack(side="left", anchor="w")
         ttk.Label(
-            cfb_all_frame,
-            text='— all 8 conferences in one output folder; pair with "Show conference/division"',
+            cfb_combined_row,
+            text='— all FBS & FCS conferences in one folder; pair with "Show conference/division"',
             foreground="#555",
         ).pack(side="left", anchor="w", padx=(6, 0))
 
-        # College Conferences — individual
-        college_frame = ttk.LabelFrame(sets_tab, text="College Football Conferences", padding=8)
-        college_frame.pack(fill="x", pady=(0, 0))
+        # FBS sub-frame
+        fbs_frame = ttk.LabelFrame(ncaa_cfb_frame, text="FBS — Football Bowl Subdivision", padding=6)
+        fbs_frame.pack(fill="x", pady=(0, 6))
 
-        college_sets = ["acc", "big_ten", "big_12", "sec", "mac", "aac", "ivy_league", "pac_12"]
+        # FBS combined option
+        _fbs_all_row = ttk.Frame(fbs_frame)
+        _fbs_all_row.pack(fill="x", pady=(0, 6))
+        _fbs_all_set = FLASHCARD_SETS["fbs_all"]
+        _fbs_all_var = tk.BooleanVar(value="fbs_all" in default_selected)
+        self.set_vars["fbs_all"] = _fbs_all_var
+        _fbs_all_count = len(_fbs_all_set.teams) or APPROX_TEAM_COUNTS.get("fbs_all", 0)
+        ttk.Checkbutton(
+            _fbs_all_row,
+            text=f"{_fbs_all_set.display_name} ({_fbs_all_count})" if _fbs_all_count else _fbs_all_set.display_name,
+            variable=_fbs_all_var,
+            command=self._update_info,
+        ).pack(side="left", anchor="w")
+        ttk.Label(_fbs_all_row, text="— all FBS conferences in one folder", foreground="#555").pack(
+            side="left", anchor="w", padx=(6, 0)
+        )
 
-        for index, code in enumerate(college_sets):
-            row = index // 2
-            col = index % 2
+        # Power Four
+        p4_frame = ttk.LabelFrame(fbs_frame, text="Power Four", padding=4)
+        p4_frame.pack(fill="x", pady=(0, 4))
+        for _idx, code in enumerate(["acc", "big_ten", "big_12", "sec"]):
             team_set = FLASHCARD_SETS[code]
             var = tk.BooleanVar(value=code in default_selected)
             self.set_vars[code] = var
-
-            count = len(team_set.teams)
+            count = len(team_set.teams) or APPROX_TEAM_COUNTS.get(code, 0)
             text = f"{team_set.display_name} ({count})" if count else team_set.display_name
-            chk = ttk.Checkbutton(college_frame, text=text, variable=var, command=self._update_info)
-            chk.grid(row=row, column=col, sticky="w", padx=(0, 14), pady=2)
+            ttk.Checkbutton(p4_frame, text=text, variable=var, command=self._update_info).grid(
+                row=0, column=_idx, sticky="w", padx=(0, 14), pady=2
+            )
+
+        # Group of Five + FBS Independents
+        g5_frame = ttk.LabelFrame(fbs_frame, text="Group of Five / Independents", padding=4)
+        g5_frame.pack(fill="x")
+        for _idx, code in enumerate(["aac", "cusa", "mac", "mountain_west", "sun_belt", "pac_12", "fbs_independents"]):
+            team_set = FLASHCARD_SETS[code]
+            var = tk.BooleanVar(value=code in default_selected)
+            self.set_vars[code] = var
+            count = len(team_set.teams) or APPROX_TEAM_COUNTS.get(code, 0)
+            text = f"{team_set.display_name} ({count})" if count else team_set.display_name
+            ttk.Checkbutton(g5_frame, text=text, variable=var, command=self._update_info).grid(
+                row=_idx // 3, column=_idx % 3, sticky="w", padx=(0, 14), pady=2
+            )
+
+        # FCS sub-frame
+        fcs_frame = ttk.LabelFrame(ncaa_cfb_frame, text="FCS — Football Championship Subdivision", padding=6)
+        fcs_frame.pack(fill="x")
+
+        # FCS combined option
+        _fcs_all_row = ttk.Frame(fcs_frame)
+        _fcs_all_row.pack(fill="x", pady=(0, 6))
+        _fcs_all_set = FLASHCARD_SETS["fcs_all"]
+        _fcs_all_var = tk.BooleanVar(value="fcs_all" in default_selected)
+        self.set_vars["fcs_all"] = _fcs_all_var
+        _fcs_all_count = len(_fcs_all_set.teams) or APPROX_TEAM_COUNTS.get("fcs_all", 0)
+        ttk.Checkbutton(
+            _fcs_all_row,
+            text=f"{_fcs_all_set.display_name} ({_fcs_all_count})" if _fcs_all_count else _fcs_all_set.display_name,
+            variable=_fcs_all_var,
+            command=self._update_info,
+        ).pack(side="left", anchor="w")
+        ttk.Label(_fcs_all_row, text="— all FCS conferences in one folder", foreground="#555").pack(
+            side="left", anchor="w", padx=(6, 0)
+        )
+
+        _fcs_grid = ttk.Frame(fcs_frame)
+        _fcs_grid.pack(fill="x")
+        _fcs_sets = [
+            "big_sky", "caa", "ivy_league", "meac",
+            "mvfc", "nec", "ovc_big_south", "patriot",
+            "pioneer", "socon", "southland", "swac",
+            "uac", "fcs_independents",
+        ]
+        for _idx, code in enumerate(_fcs_sets):
+            team_set = FLASHCARD_SETS[code]
+            var = tk.BooleanVar(value=code in default_selected)
+            self.set_vars[code] = var
+            count = len(team_set.teams) or APPROX_TEAM_COUNTS.get(code, 0)
+            text = f"{team_set.display_name} ({count})" if count else team_set.display_name
+            ttk.Checkbutton(_fcs_grid, text=text, variable=var, command=self._update_info).grid(
+                row=_idx // 4, column=_idx % 4, sticky="w", padx=(0, 14), pady=2
+            )
 
         # English Football (Premier League + EFL Family)
         english_frame = ttk.LabelFrame(sets_tab, text="English Football", padding=8)
@@ -221,7 +293,7 @@ class FlashcardGeneratorGUI:
             var = tk.BooleanVar(value=code in default_selected)
             self.set_vars[code] = var
 
-            count = len(team_set.teams)
+            count = len(team_set.teams) or APPROX_TEAM_COUNTS.get(code, 0)
             text = f"{team_set.display_name} ({count})" if count else team_set.display_name
             chk = ttk.Checkbutton(english_frame, text=text, variable=var, command=self._update_info)
             chk.grid(row=row, column=col, sticky="w", padx=(0, 14), pady=2)
