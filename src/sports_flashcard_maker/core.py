@@ -5,10 +5,34 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime
 from pathlib import Path
+from typing import TypedDict
 
 from .download_logos import download_logos
 from .flashcards import build_flashcards, build_flashcard_pdf
 from .teams import Team, format_output_filenames, get_flashcard_set
+
+
+class FlashcardResult(TypedDict, total=False):
+    status: str
+    set_code: str
+    display_name: str
+    team_count: int
+    file_count: int
+    output_dir: str
+    readme_path: str
+    pdf_path: str | None
+    warnings: list[str]
+    error: str
+
+
+class BatchResult(TypedDict, total=False):
+    status: str
+    results: list[FlashcardResult]
+    set_count: int
+    success_count: int
+    error_count: int
+    warnings: list[str]
+    error: str
 
 
 def _write_set_readme(
@@ -21,6 +45,7 @@ def _write_set_readme(
     card_ratio: str,
     filename_format: str,
     name_format: str,
+    name_order: str,
     card_types: set[str],
     split_text_colors: bool,
     location_color: str,
@@ -47,6 +72,7 @@ def _write_set_readme(
             filename_format=filename_format,
             name_format=name_format,
             card_types=card_types,
+            name_order=name_order,
         )
         team_lines.append(f"- {team.name}")
         for output_name in output_names:
@@ -72,6 +98,7 @@ def _write_set_readme(
             f"- Filename format: {filename_format}",
             f"- Card types: {', '.join(sorted(card_types))}",
             f"- Name format: {name_format}",
+            f"- Name order: {name_order}",
             f"- Split text colors: {'on' if split_text_colors else 'off'}",
             f"- Location color: {location_color}",
             f"- Team color: {team_color}",
@@ -113,6 +140,7 @@ def generate_flashcards(
     card_ratio: str = "3x2",
     filename_format: str = "prefix",
     name_format: str = "full",
+    name_order: str = "city_first",
     card_types: set[str] | None = None,
     split_text_colors: bool = False,
     location_color: str = "#1f4e79",
@@ -130,7 +158,7 @@ def generate_flashcards(
     pdf_output: bool = False,
     force_refresh: bool = False,
     progress_callback: Callable[[str], None] | None = None,
-) -> dict[str, object]:
+) -> FlashcardResult:
     """
     Generate flashcards for a given set.
 
@@ -233,6 +261,7 @@ def generate_flashcards(
             text_effect_color=text_effect_color,
             logo_filter=logo_filter,
             progress_callback=progress_callback,
+            name_order=name_order,
         )
         if progress_callback:
             progress_callback(
@@ -266,7 +295,7 @@ def generate_flashcards(
             and team.location_name.strip().lower() == team.mascot_name.strip().lower()
         ]
 
-        warnings: list[str] = list(download_warnings)  # Include download warnings
+        warnings: list[str] = sorted(download_warnings)  # Sorted for deterministic README diffs
         if duplicate_structured_name_teams:
             example_names = ", ".join(sorted(duplicate_structured_name_teams)[:3])
             warnings.append(
@@ -288,6 +317,7 @@ def generate_flashcards(
             card_ratio=card_ratio,
             filename_format=filename_format,
             name_format=name_format,
+            name_order=name_order,
             card_types=card_types if card_types is not None else {"logo", "text"},
             split_text_colors=split_text_colors,
             location_color=location_color,
@@ -336,6 +366,7 @@ def generate_flashcards_batch(
     card_ratio: str = "3x2",
     filename_format: str = "prefix",
     name_format: str = "full",
+    name_order: str = "city_first",
     card_types: set[str] | None = None,
     split_text_colors: bool = False,
     location_color: str = "#1f4e79",
@@ -353,7 +384,7 @@ def generate_flashcards_batch(
     pdf_output: bool = False,
     force_refresh: bool = False,
     progress_callback: Callable[[str], None] | None = None,
-) -> dict[str, object]:
+) -> BatchResult:
     """Generate flashcards for multiple sets in sequence."""
     normalized_codes = [code.lower() for code in set_codes if code]
     if not normalized_codes:
@@ -367,7 +398,7 @@ def generate_flashcards_batch(
     ordered_unique_codes = list(dict.fromkeys(normalized_codes))
     base_output_dir = Path(output_dir) if output_dir else None
 
-    results: list[dict[str, object]] = []
+    results: list[FlashcardResult] = []
     success_count = 0
     error_count = 0
 
@@ -391,6 +422,7 @@ def generate_flashcards_batch(
             card_ratio=card_ratio,
             filename_format=filename_format,
             name_format=name_format,
+            name_order=name_order,
             card_types=card_types,
             split_text_colors=split_text_colors,
             location_color=location_color,
@@ -433,6 +465,6 @@ def generate_flashcards_batch(
         "warnings": [
             f"{item.get('display_name', item.get('set_code', 'unknown'))}: {warning}"
             for item in results
-            for warning in item.get("warnings", [])
+            for warning in (item.get("warnings") or [])
         ],
     }

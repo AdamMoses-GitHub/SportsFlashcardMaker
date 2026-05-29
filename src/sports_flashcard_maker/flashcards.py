@@ -102,6 +102,25 @@ def _draw_text_with_effect(
     draw.text(xy, text, fill=fill, font=font)
 
 
+def _make_layout_context(
+    width_px: int,
+    height_px: int,
+    size_scale: float,
+) -> tuple[ImageDraw.ImageDraw, int, int]:
+    """Create a throw-away draw context and compute safe text margins.
+
+    Returns (draw, max_width, max_height) where max_height already includes
+    the 0.92 safety factor and size_scale.
+    """
+    canvas = Image.new("RGB", (width_px, height_px), color="white")
+    draw = ImageDraw.Draw(canvas)
+    margin_h = int(width_px * 0.08)
+    margin_v = int(height_px * 0.08)
+    max_width = width_px - 2 * margin_h
+    max_height = int((height_px - 2 * margin_v) * 0.92 * size_scale)
+    return draw, max_width, max_height
+
+
 def _fit_back_text_layout(
     team_name: str,
     width_px: int,
@@ -113,34 +132,36 @@ def _fit_back_text_layout(
     Uses conservative 92% safety factor on max_height to prevent overflow.
     size_scale shrinks the allowed height budget so text renders smaller.
     """
-    canvas = Image.new("RGB", (width_px, height_px), color="white")
-    draw = ImageDraw.Draw(canvas)
-
+    draw, max_width, max_height = _make_layout_context(width_px, height_px, size_scale)
     words = team_name.split()
-    margin_horizontal = int(width_px * 0.08)
-    margin_vertical = int(height_px * 0.08)
-    max_width = width_px - (2 * margin_horizontal)  # 84% width
-    max_height_base = height_px - (2 * margin_vertical)  # 84% height
-    # Apply safety factor then scale
-    max_height = int(max_height_base * 0.92 * size_scale)
 
-    # Try font sizes with finer stepping for better fit precision
-    for font_size in range(int(height_px * 0.40), 11, -1):
+    def _try_size(font_size: int) -> tuple[ImageFont.ImageFont, list[str], int] | None:
         font = _load_font(font_size)
         lines = _wrap_words(draw, words, font, max_width)
         if len(lines) > 4:
-            continue
-
-        # Reduce line spacing for longer text to ensure fit within margins
+            return None
         spacing = max(6, font_size // 6)
         line_sizes = [_text_size(draw, line, font) for line in lines]
-        widest_line = max((w for w, _ in line_sizes), default=0)
-        total_height = sum(h for _, h in line_sizes) + spacing * (len(lines) - 1)
-
-        if widest_line <= max_width and total_height <= max_height:
+        widest = max((w for w, _ in line_sizes), default=0)
+        total_h = sum(h for _, h in line_sizes) + spacing * (len(lines) - 1)
+        if widest <= max_width and total_h <= max_height:
             return font, lines, spacing
+        return None
 
-    # Fallback: use smallest size but respect margins
+    # Coarse pass (step 4) to find approximate fit, then fine pass (step 1).
+    start = int(height_px * 0.40)
+    coarse = 4
+    fit_at: int | None = None
+    for fs in range(start, 11, -coarse):
+        if _try_size(fs) is not None:
+            fit_at = fs
+            break
+    if fit_at is not None:
+        for fs in range(min(start, fit_at + coarse - 1), fit_at - 1, -1):
+            result = _try_size(fs)
+            if result is not None:
+                return result
+
     fallback_font = _load_font(12)
     return fallback_font, _wrap_words(draw, words, fallback_font, max_width), 6
 
@@ -157,44 +178,43 @@ def _fit_two_block_text_layout(
     Uses conservative 92% safety factor on max_height to prevent overflow.
     size_scale shrinks the allowed height budget so text renders smaller.
     """
-    canvas = Image.new("RGB", (width_px, height_px), color="white")
-    draw = ImageDraw.Draw(canvas)
-
+    draw, max_width, max_height = _make_layout_context(width_px, height_px, size_scale)
     first_words = first_text.split()
     second_words = second_text.split()
-    margin_horizontal = int(width_px * 0.08)
-    margin_vertical = int(height_px * 0.08)
-    max_width = width_px - (2 * margin_horizontal)  # 84% width
-    max_height_base = height_px - (2 * margin_vertical)  # 84% height
-    # Apply safety factor then scale
-    max_height = int(max_height_base * 0.92 * size_scale)
 
-    # Try font sizes with finer stepping for better fit precision
-    for font_size in range(int(height_px * 0.28), 11, -1):
+    def _try_size(font_size: int) -> tuple[ImageFont.ImageFont, list[str], list[str], int] | None:
         font = _load_font(font_size)
         first_lines = _wrap_words(draw, first_words, font, max_width)
         second_lines = _wrap_words(draw, second_words, font, max_width)
-
         if len(first_lines) + len(second_lines) > 8:
-            continue
-
-        # Reduce line spacing for longer text to ensure fit within margins
+            return None
         spacing = max(6, font_size // 6)
-        block_gap = 0
-
         first_sizes = [_text_size(draw, line, font) for line in first_lines]
         second_sizes = [_text_size(draw, line, font) for line in second_lines]
-
-        widest_line = max(
+        widest = max(
             [w for w, _ in first_sizes] + [w for w, _ in second_sizes],
             default=0,
         )
-        first_height = sum(h for _, h in first_sizes) + spacing * max(0, len(first_lines) - 1)
-        second_height = sum(h for _, h in second_sizes) + spacing * max(0, len(second_lines) - 1)
-        total_height = first_height + second_height + (block_gap if first_lines and second_lines else 0)
-
-        if widest_line <= max_width and total_height <= max_height:
+        first_h = sum(h for _, h in first_sizes) + spacing * max(0, len(first_lines) - 1)
+        second_h = sum(h for _, h in second_sizes) + spacing * max(0, len(second_lines) - 1)
+        total_h = first_h + second_h
+        if widest <= max_width and total_h <= max_height:
             return font, first_lines, second_lines, spacing
+        return None
+
+    # Coarse pass (step 4) to find approximate fit, then fine pass (step 1).
+    start = int(height_px * 0.28)
+    coarse = 4
+    fit_at: int | None = None
+    for fs in range(start, 11, -coarse):
+        if _try_size(fs) is not None:
+            fit_at = fs
+            break
+    if fit_at is not None:
+        for fs in range(min(start, fit_at + coarse - 1), fit_at - 1, -1):
+            result = _try_size(fs)
+            if result is not None:
+                return result
 
     fallback_font = _load_font(12)
     return (
@@ -231,13 +251,14 @@ def _draw_team_text_region(
     size_scale: float = 1.0,
     show_conference: bool = False,
     abbreviate_conference: bool = False,
+    name_order: str = "city_first",
 ) -> None:
     # Reserve space at the bottom for the conference/division line if needed.
     conf_line = _get_conference_line(team, abbreviate_conference) if show_conference else None
     conf_reserved = int(region_height_px * 0.20) if conf_line else 0
     eff_h = region_height_px - conf_reserved
 
-    back_text = format_team_name(team, name_format)
+    back_text = format_team_name(team, name_format, name_order)
     use_split = split_text_colors and name_format == "full"
 
     if use_split:
@@ -248,8 +269,12 @@ def _draw_team_text_region(
         if not location or not team_name or location.lower() == team_name.lower():
             use_split = False
         else:
-            first_text, first_color = location, location_color
-            second_text, second_color = team_name, team_color
+            if name_order == "team_first":
+                first_text, first_color = team_name, team_color
+                second_text, second_color = location, location_color
+            else:
+                first_text, first_color = location, location_color
+                second_text, second_color = team_name, team_color
 
     if use_split:
         font, first_lines, second_lines, spacing = _fit_two_block_text_layout(
@@ -432,6 +457,7 @@ def _build_text_card(
     index_corner: str = "none",
     index: int = 0,
     total: int = 0,
+    name_order: str = "city_first",
 ) -> Image.Image:
     _TEXT_SIZE_SCALES = {"large": 1.0, "medium": 0.65, "small": 0.45}
     size_scale = _TEXT_SIZE_SCALES.get(text_size, 1.0)
@@ -453,6 +479,7 @@ def _build_text_card(
         size_scale=size_scale,
         show_conference=show_conference,
         abbreviate_conference=abbreviate_conference,
+        name_order=name_order,
     )
     if league_logo_path and league_logo_corner != "none":
         _overlay_league_logo(card, league_logo_path, league_logo_corner)
@@ -482,6 +509,7 @@ def _build_combined_card(
     index_corner: str = "none",
     index: int = 0,
     total: int = 0,
+    name_order: str = "city_first",
 ) -> Image.Image:
     card = Image.new("RGB", (width_px, height_px), color=bg_color)
     draw = ImageDraw.Draw(card)
@@ -522,6 +550,7 @@ def _build_combined_card(
         text_effect_color=text_effect_color,
         show_conference=show_conference,
         abbreviate_conference=abbreviate_conference,
+        name_order=name_order,
     )
 
     if league_logo_path and league_logo_corner != "none":
@@ -555,6 +584,7 @@ def build_flashcards(
     text_effect_color: str = "#888888",
     logo_filter: str = "none",
     progress_callback: Callable[[str], None] | None = None,
+    name_order: str = "city_first",
 ) -> list[Path]:
     output_dir.mkdir(parents=True, exist_ok=True)
     if card_types is None:
@@ -585,6 +615,7 @@ def build_flashcards(
             team,
             filename_format=filename_format,
             name_format=name_format,
+            name_order=name_order,
         )
 
         created_for_team: list[str] = []
@@ -628,6 +659,7 @@ def build_flashcards(
                 index_corner=index_corner,
                 index=index,
                 total=total,
+                name_order=name_order,
             )
             text_destination = output_dir / f"{text_name}.png"
             text_card.save(text_destination, dpi=(dpi, dpi), optimize=True)
@@ -656,6 +688,7 @@ def build_flashcards(
                 index_corner=index_corner,
                 index=index,
                 total=total,
+                name_order=name_order,
             )
             combined_destination = output_dir / f"{combo_name}.png"
             combined_card.save(combined_destination, dpi=(dpi, dpi), optimize=True)

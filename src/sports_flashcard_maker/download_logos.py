@@ -313,6 +313,7 @@ def download_logos(
                         skipped_teams.append(f"{team.name}: unexpected error ({str(exc)[:50]})")
 
         if skipped_teams:
+            skipped_teams.sort()
             warnings.append(
                 f"Skipped {len(skipped_teams)} teams due to download or configuration errors. "
                 f"Examples: {', '.join(skipped_teams[:3])}"

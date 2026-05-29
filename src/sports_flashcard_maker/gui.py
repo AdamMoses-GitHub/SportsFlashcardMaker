@@ -6,6 +6,7 @@ import json
 import os
 import platform
 import shutil
+import subprocess
 import threading
 import time
 import tkinter as tk
@@ -366,12 +367,11 @@ class FlashcardGeneratorGUI:
             variable=self.force_refresh_var,
         ).grid(row=3, column=1, columnspan=3, sticky="w", pady=(2, 4))
 
-        # ── Row: Card Types | Filename Pattern | Name Format ─────────────────
+        # ── Row: Card Types | Filename Pattern ───────────────────────────────
         card_row = ttk.Frame(settings_tab)
         card_row.pack(fill="x", pady=(0, 8))
         card_row.columnconfigure(0, weight=1)
         card_row.columnconfigure(1, weight=1)
-        card_row.columnconfigure(2, weight=1)
 
         card_types_frame = ttk.LabelFrame(card_row, text="Card Types", padding=10)
         card_types_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
@@ -384,7 +384,7 @@ class FlashcardGeneratorGUI:
         ttk.Checkbutton(card_types_frame, text="Combined  — logo + name", variable=self.card_type_combo_var, command=self._on_card_types_changed).pack(anchor="w", pady=2)
 
         filename_frame = ttk.LabelFrame(card_row, text="Filename Pattern", padding=8)
-        filename_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 4))
+        filename_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
 
         self.filename_format_var = tk.StringVar(value="prefix")
         ttk.Radiobutton(
@@ -403,12 +403,18 @@ class FlashcardGeneratorGUI:
             filename_frame,
             text="CARDTYPE is logo, text, or combo.",
             foreground="#555",
-            wraplength=200,
+            wraplength=280,
             justify="left",
         ).pack(anchor="w", pady=(6, 0))
 
-        name_frame = ttk.LabelFrame(card_row, text="Name Format", padding=8)
-        name_frame.grid(row=0, column=2, sticky="nsew", padx=(4, 0))
+        # ── Row: Name Format | Name Order ─────────────────────────────────────
+        name_row = ttk.Frame(settings_tab)
+        name_row.pack(fill="x", pady=(0, 8))
+        name_row.columnconfigure(0, weight=1)
+        name_row.columnconfigure(1, weight=1)
+
+        name_frame = ttk.LabelFrame(name_row, text="Name Format", padding=8)
+        name_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
 
         self.name_format_var = tk.StringVar(value="full")
         self.name_full_btn = ttk.Radiobutton(
@@ -436,14 +442,41 @@ class FlashcardGeneratorGUI:
         )
         self.name_city_btn.pack(anchor="w", pady=1)
 
-        # Text Appearance
-        colors_frame = ttk.LabelFrame(settings_tab, text="Text Appearance", padding=10)
-        colors_frame.pack(fill="x", pady=(0, 0))
+        name_order_frame = ttk.LabelFrame(name_row, text="Name Order", padding=8)
+        name_order_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
+        ttk.Label(
+            name_order_frame,
+            text="Applies to full-name mode only.",
+            foreground="#555",
+        ).pack(anchor="w", pady=(0, 6))
+        self.name_order_var = tk.StringVar(value="city_first")
+        ttk.Radiobutton(
+            name_order_frame,
+            text="City first  (e.g. Boston Red Sox)",
+            variable=self.name_order_var,
+            value="city_first",
+        ).pack(anchor="w", pady=1)
+        ttk.Radiobutton(
+            name_order_frame,
+            text="Team first  (e.g. Red Sox Boston)",
+            variable=self.name_order_var,
+            value="team_first",
+        ).pack(anchor="w", pady=1)
+
+        # ── Row: Text Colors | Typography & Effects ───────────────────────────
+        appearance_row = ttk.Frame(settings_tab)
+        appearance_row.pack(fill="x", pady=(0, 0))
+        appearance_row.columnconfigure(0, weight=1)
+        appearance_row.columnconfigure(1, weight=1)
+
+        # Left: Text Colors
+        colors_frame = ttk.LabelFrame(appearance_row, text="Text Colors", padding=10)
+        colors_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 4))
 
         self.split_text_colors_var = tk.BooleanVar(value=False)
         self.split_text_colors_btn = ttk.Checkbutton(
             colors_frame,
-            text="Use separate colors for location and team name (full name format only)",
+            text="Use separate colors for location and team name",
             variable=self.split_text_colors_var,
             command=self._on_split_color_toggle,
         )
@@ -453,7 +486,7 @@ class FlashcardGeneratorGUI:
             colors_frame,
             text="",
             foreground="#666",
-            wraplength=500,
+            wraplength=280,
             justify="left",
         )
         self.split_color_policy_label.pack(anchor="w", pady=(0, 4))
@@ -475,8 +508,8 @@ class FlashcardGeneratorGUI:
             self.color_inputs_frame, text="", width=3, relief="solid", bd=1
         )
         self.text_color_swatch.grid(row=0, column=2, sticky="w", pady=2)
-        ttk.Label(self.color_inputs_frame, text="Used when split colors is off", foreground="#777").grid(
-            row=0, column=3, sticky="w", padx=(10, 0), pady=2
+        ttk.Label(self.color_inputs_frame, text="Split off", foreground="#777").grid(
+            row=0, column=3, sticky="w", padx=(8, 0), pady=2
         )
 
         ttk.Label(self.color_inputs_frame, text="Location color").grid(
@@ -493,8 +526,8 @@ class FlashcardGeneratorGUI:
             self.color_inputs_frame, text="", width=3, relief="solid", bd=1
         )
         self.location_color_swatch.grid(row=1, column=2, sticky="w", pady=2)
-        ttk.Label(self.color_inputs_frame, text="Used when split colors is on", foreground="#777").grid(
-            row=1, column=3, sticky="w", padx=(10, 0), pady=2
+        ttk.Label(self.color_inputs_frame, text="Split on", foreground="#777").grid(
+            row=1, column=3, sticky="w", padx=(8, 0), pady=2
         )
 
         ttk.Label(self.color_inputs_frame, text="Team color").grid(
@@ -511,33 +544,33 @@ class FlashcardGeneratorGUI:
             self.color_inputs_frame, text="", width=3, relief="solid", bd=1
         )
         self.team_color_swatch.grid(row=2, column=2, sticky="w", pady=2)
-        ttk.Label(self.color_inputs_frame, text="Used when split colors is on", foreground="#777").grid(
-            row=2, column=3, sticky="w", padx=(10, 0), pady=2
+        ttk.Label(self.color_inputs_frame, text="Split on", foreground="#777").grid(
+            row=2, column=3, sticky="w", padx=(8, 0), pady=2
         )
 
         self.color_hint_label = ttk.Label(
             colors_frame,
             text="Use hex (#RRGGBB) or named colors (black, navy, red, …).",
             foreground="#555",
+            wraplength=280,
         )
         self.color_hint_label.pack(anchor="w", pady=(6, 0))
 
         ttk.Label(
             colors_frame,
-            text=(
-                "Note: soccer sets do not split location and team name, so only the "
-                "Text color is used for those cards regardless of the split colors setting."
-            ),
+            text="Note: soccer sets use only Text color regardless of split setting.",
             foreground="#888",
-            wraplength=520,
+            wraplength=280,
             justify="left",
         ).pack(anchor="w", pady=(4, 0))
 
-        ttk.Separator(colors_frame, orient="horizontal").pack(fill="x", pady=(10, 6))
+        # Right: Typography & Effects
+        typography_frame = ttk.LabelFrame(appearance_row, text="Typography & Effects", padding=10)
+        typography_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
 
-        size_row = ttk.Frame(colors_frame)
+        size_row = ttk.Frame(typography_frame)
         size_row.pack(anchor="w")
-        ttk.Label(size_row, text="Text card font size:").pack(side="left", padx=(0, 10))
+        ttk.Label(size_row, text="Text font size:").pack(side="left", padx=(0, 10))
         self.text_size_var = tk.StringVar(value="large")
         for label, value in (("Large", "large"), ("Medium", "medium"), ("Small", "small")):
             ttk.Radiobutton(
@@ -547,40 +580,41 @@ class FlashcardGeneratorGUI:
                 value=value,
             ).pack(side="left", padx=(0, 8))
         ttk.Label(
-            colors_frame,
-            text="Applies to text-only cards. Large fills the card; smaller sizes leave more white space.",
+            typography_frame,
+            text="Large fills the card; smaller sizes leave more white space.",
             foreground="#555",
-        ).pack(anchor="w", pady=(2, 0))
-
-        ttk.Separator(colors_frame, orient="horizontal").pack(fill="x", pady=(10, 6))
+            wraplength=280,
+        ).pack(anchor="w", pady=(2, 8))
 
         # Background color
-        bg_row = ttk.Frame(colors_frame)
+        bg_row = ttk.Frame(typography_frame)
         bg_row.pack(anchor="w", fill="x", pady=(0, 4))
-        ttk.Label(bg_row, text="Card background:").pack(side="left", padx=(0, 8))
+        ttk.Label(bg_row, text="Background:").pack(side="left", padx=(0, 8))
         self.bg_color_var = tk.StringVar(value="white")
         ttk.Entry(bg_row, textvariable=self.bg_color_var, width=12).pack(side="left", padx=(0, 6))
         self.bg_color_swatch = tk.Label(bg_row, text="", width=3, relief="solid", bd=1)
-        self.bg_color_swatch.pack(side="left", padx=(0, 10))
-        ttk.Label(bg_row, text="Applies to all card types.", foreground="#777").pack(side="left")
+        self.bg_color_swatch.pack(side="left", padx=(0, 8))
+        ttk.Label(bg_row, text="All card types.", foreground="#777").pack(side="left")
 
         # Text effect
-        effect_row = ttk.Frame(colors_frame)
-        effect_row.pack(anchor="w", fill="x", pady=(0, 4))
+        effect_row = ttk.Frame(typography_frame)
+        effect_row.pack(anchor="w", fill="x", pady=(0, 2))
         ttk.Label(effect_row, text="Text effect:").pack(side="left", padx=(0, 8))
         self.text_effect_var = tk.StringVar(value="none")
         for lbl, val in (("None", "none"), ("Shadow", "shadow"), ("Outline", "outline")):
             ttk.Radiobutton(effect_row, text=lbl, variable=self.text_effect_var, value=val).pack(
                 side="left", padx=(0, 6)
             )
-        ttk.Label(effect_row, text="  Effect color:").pack(side="left", padx=(0, 6))
+        effect_color_row = ttk.Frame(typography_frame)
+        effect_color_row.pack(anchor="w", fill="x", pady=(0, 4))
+        ttk.Label(effect_color_row, text="Effect color:").pack(side="left", padx=(0, 8))
         self.text_effect_color_var = tk.StringVar(value="#888888")
-        ttk.Entry(effect_row, textvariable=self.text_effect_color_var, width=10).pack(side="left", padx=(0, 6))
-        self.text_effect_color_swatch = tk.Label(effect_row, text="", width=3, relief="solid", bd=1)
+        ttk.Entry(effect_color_row, textvariable=self.text_effect_color_var, width=10).pack(side="left", padx=(0, 6))
+        self.text_effect_color_swatch = tk.Label(effect_color_row, text="", width=3, relief="solid", bd=1)
         self.text_effect_color_swatch.pack(side="left")
 
         # Logo filter
-        filter_row = ttk.Frame(colors_frame)
+        filter_row = ttk.Frame(typography_frame)
         filter_row.pack(anchor="w", fill="x", pady=(0, 0))
         ttk.Label(filter_row, text="Logo filter:").pack(side="left", padx=(0, 8))
         self.logo_filter_var = tk.StringVar(value="none")
@@ -779,6 +813,7 @@ class FlashcardGeneratorGUI:
             self.output_var,
             self.filename_format_var,
             self.name_format_var,
+            self.name_order_var,
             self.split_text_colors_var,
             self.text_color_var,
             self.location_color_var,
@@ -986,7 +1021,7 @@ class FlashcardGeneratorGUI:
             f"Ratio: {self.card_ratio_var.get()} ({self.RATIO_META.get(self.card_ratio_var.get(), ('unknown', 'unknown'))[0]}, {self.RATIO_META.get(self.card_ratio_var.get(), ('unknown', 'unknown'))[1]})",
             f"Card types: {', '.join(sorted(card_types)) if card_types else '(none)'}",
             f"Filename: {self.filename_format_var.get()}",
-            f"Name: {self.name_format_var.get()}",
+            f"Name: {self.name_format_var.get()} ({self.name_order_var.get()})",
             (
                 "Split colors: off (disabled for selected soccer sets)"
                 if split_forced_off
@@ -1058,6 +1093,7 @@ class FlashcardGeneratorGUI:
                 team,
                 filename_format=self.filename_format_var.get(),
                 name_format=self.name_format_var.get(),
+                name_order=self.name_order_var.get(),
                 card_types=self._selected_card_types(),
             )
             display_name = FLASHCARD_SETS[code].display_name if code in FLASHCARD_SETS else "Sample"
@@ -1159,6 +1195,7 @@ class FlashcardGeneratorGUI:
                 card_types=card_types,
                 filename_format=filename_format,
                 name_format=name_format,
+                name_order=self.name_order_var.get(),
                 split_text_colors=split_text_colors,
                 text_color=text_color,
                 text_size=text_size,
@@ -1206,10 +1243,10 @@ class FlashcardGeneratorGUI:
                         continue
                     if item.get("status") == "success":
                         self._append_status(
-                            f"  ✓ {item['display_name']}: {item['team_count']} teams → {item['file_count']} cards"
+                            f"  ✓ {item.get('display_name', '?')}: {item.get('team_count', 0)} teams → {item.get('file_count', 0)} cards"
                         )
                         if item.get("pdf_path"):
-                            self._append_status(f"    PDF: {Path(str(item['pdf_path'])).name}")
+                            self._append_status(f"    PDF: {Path(str(item.get('pdf_path', ''))).name}")
                     else:
                         error_msg = item.get('error', 'Unknown error')
                         self._append_status(f"  ✗ {item.get('set_code', 'unknown')}: {error_msg}")
@@ -1280,12 +1317,13 @@ class FlashcardGeneratorGUI:
             return
 
         try:
-            if platform.system() == "Windows":
+            system = platform.system()
+            if system == "Windows":
                 os.startfile(path)
-            elif platform.system() == "Darwin":  # macOS
-                os.system(f"open '{path}'")
+            elif system == "Darwin":  # macOS
+                subprocess.run(["open", str(path)], check=False)
             else:  # Linux
-                os.system(f"xdg-open '{path}'")
+                subprocess.run(["xdg-open", str(path)], check=False)
         except Exception as e:
             messagebox.showerror("Error", f"Could not open folder: {e}")
 

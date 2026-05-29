@@ -62,6 +62,13 @@ def parse_args() -> argparse.Namespace:
         help="What to include in card text and filenames: 'full' (city+team), 'team_only', or 'city_only'.",
     )
     parser.add_argument(
+        "--name-order",
+        dest="name_order",
+        choices=["city_first", "team_first"],
+        default="city_first",
+        help="Part order in full-name mode: 'city_first' (default, e.g. 'Boston Red Sox') or 'team_first' (e.g. 'Red Sox Boston').",
+    )
+    parser.add_argument(
         "--card-types",
         dest="card_types",
         nargs="+",
@@ -152,6 +159,7 @@ def cli_main() -> None:
             card_ratio=args.card_ratio,
             filename_format=args.filename_format,
             name_format=args.name_format,
+            name_order=args.name_order,
             card_types=set(args.card_types),
             split_text_colors=args.split_text_colors,
             location_color=args.location_color,
@@ -183,6 +191,7 @@ def cli_main() -> None:
         card_ratio=args.card_ratio,
         filename_format=args.filename_format,
         name_format=args.name_format,
+        name_order=args.name_order,
         card_types=set(args.card_types),
         split_text_colors=args.split_text_colors,
         location_color=args.location_color,

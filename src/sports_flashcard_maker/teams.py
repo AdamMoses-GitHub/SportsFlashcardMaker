@@ -1316,6 +1316,7 @@ def split_team_name(team: Team) -> tuple[str, str]:
 def format_team_name(
     team: Team,
     name_format: str = "full",
+    name_order: str = "city_first",
 ) -> str:
     """
     Format a team name according to config options.
@@ -1323,6 +1324,7 @@ def format_team_name(
     Args:
         team: The team object
         name_format: "full" (city+team), "city_only", or "team_only"
+        name_order: "city_first" (default) or "team_first" — controls part order in full mode
     
     Returns:
         Formatted team name string
@@ -1337,6 +1339,8 @@ def format_team_name(
         location, team_name = split_team_name(team)
         if location.strip().lower() == team_name.strip().lower():
             return location.strip()
+        if name_order == "team_first":
+            return f"{team_name} {location}".strip()
         return f"{location} {team_name}".strip()
     else:
         return team.name
@@ -1346,6 +1350,7 @@ def format_filename(
     team: Team,
     filename_format: str = "prefix",
     name_format: str = "full",
+    name_order: str = "city_first",
 ) -> tuple[str, str, str]:
     """
     Generate logo, text, and combo filename stems for a team.
@@ -1354,11 +1359,12 @@ def format_filename(
         team: The team object
         filename_format: "prefix" or "suffix"
         name_format: "full", "city_only", or "team_only"
+        name_order: "city_first" or "team_first" — controls part order in full mode
 
     Returns:
         Tuple of (logo_stem, text_stem, combo_stem) without extension
     """
-    formatted_name = format_team_name(team, name_format)
+    formatted_name = format_team_name(team, name_format, name_order)
     stem = re.sub(r"[^a-z0-9]+", "_", formatted_name.lower()).strip("_")
 
     if filename_format == "suffix":
@@ -1372,12 +1378,14 @@ def format_output_filenames(
     filename_format: str = "prefix",
     name_format: str = "full",
     card_types: set[str] | None = None,
+    name_order: str = "city_first",
 ) -> list[str]:
     """Generate output filename stems for the selected card types.
 
     Args:
         card_types: Set of types to include — any of "logo", "text", "combo".
                     Defaults to {"logo", "text"}.
+        name_order: "city_first" or "team_first" — controls part order in full mode.
 
     Returns:
         Filename stems in order: logo first, text second, combo third.
@@ -1389,6 +1397,7 @@ def format_output_filenames(
         team,
         filename_format=filename_format,
         name_format=name_format,
+        name_order=name_order,
     )
 
     result: list[str] = []
