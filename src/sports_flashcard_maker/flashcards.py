@@ -362,10 +362,14 @@ def _overlay_league_logo(
             w, h = resized.size
             if corner == "top-left":
                 x, y = margin, margin
+            elif corner == "top-center":
+                x, y = (card_w - w) // 2, margin
             elif corner == "top-right":
                 x, y = card_w - w - margin, margin
             elif corner == "bottom-left":
                 x, y = margin, card_h - h - margin
+            elif corner == "bottom-center":
+                x, y = (card_w - w) // 2, card_h - h - margin
             else:  # bottom-right
                 x, y = card_w - w - margin, card_h - h - margin
 

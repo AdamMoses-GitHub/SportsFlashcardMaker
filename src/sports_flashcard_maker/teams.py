@@ -501,6 +501,23 @@ def _dedup_cfb_teams(*team_tuples: tuple[Team, ...]) -> tuple[Team, ...]:
     return tuple(result)
 
 
+POWER_FOUR_TEAMS: tuple[Team, ...] = _dedup_cfb_teams(
+    ACC_TEAMS,
+    BIG_TEN_TEAMS,
+    BIG_12_TEAMS,
+    SEC_TEAMS,
+)
+
+GROUP_OF_FIVE_TEAMS: tuple[Team, ...] = _dedup_cfb_teams(
+    AAC_TEAMS,
+    CUSA_TEAMS,
+    MAC_TEAMS,
+    MOUNTAIN_WEST_TEAMS,
+    SUN_BELT_TEAMS,
+    PAC_12_TEAMS,
+    FBS_INDEPENDENTS_TEAMS,
+)
+
 FBS_ALL_TEAMS: tuple[Team, ...] = _dedup_cfb_teams(
     ACC_TEAMS,
     BIG_TEN_TEAMS,
@@ -569,6 +586,19 @@ CFB_ALL_TEAMS: tuple[Team, ...] = _dedup_cfb_teams(
 # Approximate team counts for sets whose teams are fetched dynamically at runtime.
 # Used by the GUI to show a ballpark number next to each set label.
 APPROX_TEAM_COUNTS: dict[str, int] = {
+    # Professional leagues (API-fetched; static approximations)
+    "nfl": 32,
+    "nba": 30,
+    "nhl": 32,
+    "wnba": 14,
+    "mls": 30,
+    "nwsl": 14,
+    "ufl": 8,
+    # English football (API-fetched; static approximations)
+    "epl": 20,
+    "efl_championship": 24,
+    "efl_league_one": 24,
+    "efl_league_two": 24,
     # FBS – Power 4
     "acc": len(ACC_TEAMS),
     "big_ten": len(BIG_TEN_TEAMS),
@@ -598,6 +628,9 @@ APPROX_TEAM_COUNTS: dict[str, int] = {
     "swac": len(SWAC_TEAMS),
     "uac": len(UAC_TEAMS),
     "fcs_independents": len(FCS_INDEPENDENTS_TEAMS),
+    # FBS sub-group combined
+    "power_four": len(POWER_FOUR_TEAMS),
+    "group_of_five": len(GROUP_OF_FIVE_TEAMS),
     # FBS / FCS combined
     "fbs_all": len(FBS_ALL_TEAMS),
     "fcs_all": len(FCS_ALL_TEAMS),
@@ -1093,6 +1126,24 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
         teams=FCS_INDEPENDENTS_TEAMS,
         default_conference="FCS Independents",
         default_conference_abbr="Ind",
+    ),
+    "power_four": FlashcardSet(
+        code="power_four",
+        display_name="All Power Four",
+        source_mode="espn_cfb_api",
+        source_template=None,
+        source_api_endpoint=CFB_TEAMS_ENDPOINT,
+        output_folder="POWER_FOUR",
+        teams=POWER_FOUR_TEAMS,
+    ),
+    "group_of_five": FlashcardSet(
+        code="group_of_five",
+        display_name="All G5 & Independents",
+        source_mode="espn_cfb_api",
+        source_template=None,
+        source_api_endpoint=CFB_TEAMS_ENDPOINT,
+        output_folder="GROUP_OF_FIVE",
+        teams=GROUP_OF_FIVE_TEAMS,
     ),
     "fbs_all": FlashcardSet(
         code="fbs_all",

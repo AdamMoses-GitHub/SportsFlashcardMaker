@@ -219,26 +219,60 @@ class FlashcardGeneratorGUI:
         # Power Four
         p4_frame = ttk.LabelFrame(fbs_frame, text="Power Four", padding=4)
         p4_frame.pack(fill="x", pady=(0, 4))
+        _p4_all_row = ttk.Frame(p4_frame)
+        _p4_all_row.pack(fill="x", pady=(0, 4))
+        _p4_all_set = FLASHCARD_SETS["power_four"]
+        _p4_all_var = tk.BooleanVar(value="power_four" in default_selected)
+        self.set_vars["power_four"] = _p4_all_var
+        _p4_all_count = len(_p4_all_set.teams) or APPROX_TEAM_COUNTS.get("power_four", 0)
+        ttk.Checkbutton(
+            _p4_all_row,
+            text=f"{_p4_all_set.display_name} ({_p4_all_count})" if _p4_all_count else _p4_all_set.display_name,
+            variable=_p4_all_var,
+            command=self._update_info,
+        ).pack(side="left", anchor="w")
+        ttk.Label(_p4_all_row, text="— all Power Four conferences in one folder", foreground="#555").pack(
+            side="left", anchor="w", padx=(6, 0)
+        )
+        _p4_grid = ttk.Frame(p4_frame)
+        _p4_grid.pack(fill="x")
         for _idx, code in enumerate(["acc", "big_ten", "big_12", "sec"]):
             team_set = FLASHCARD_SETS[code]
             var = tk.BooleanVar(value=code in default_selected)
             self.set_vars[code] = var
             count = len(team_set.teams) or APPROX_TEAM_COUNTS.get(code, 0)
             text = f"{team_set.display_name} ({count})" if count else team_set.display_name
-            ttk.Checkbutton(p4_frame, text=text, variable=var, command=self._update_info).grid(
+            ttk.Checkbutton(_p4_grid, text=text, variable=var, command=self._update_info).grid(
                 row=0, column=_idx, sticky="w", padx=(0, 14), pady=2
             )
 
         # Group of Five + FBS Independents
         g5_frame = ttk.LabelFrame(fbs_frame, text="Group of Five / Independents", padding=4)
         g5_frame.pack(fill="x")
+        _g5_all_row = ttk.Frame(g5_frame)
+        _g5_all_row.pack(fill="x", pady=(0, 4))
+        _g5_all_set = FLASHCARD_SETS["group_of_five"]
+        _g5_all_var = tk.BooleanVar(value="group_of_five" in default_selected)
+        self.set_vars["group_of_five"] = _g5_all_var
+        _g5_all_count = len(_g5_all_set.teams) or APPROX_TEAM_COUNTS.get("group_of_five", 0)
+        ttk.Checkbutton(
+            _g5_all_row,
+            text=f"{_g5_all_set.display_name} ({_g5_all_count})" if _g5_all_count else _g5_all_set.display_name,
+            variable=_g5_all_var,
+            command=self._update_info,
+        ).pack(side="left", anchor="w")
+        ttk.Label(_g5_all_row, text="— all G5 conferences + FBS Independents in one folder", foreground="#555").pack(
+            side="left", anchor="w", padx=(6, 0)
+        )
+        _g5_grid = ttk.Frame(g5_frame)
+        _g5_grid.pack(fill="x")
         for _idx, code in enumerate(["aac", "cusa", "mac", "mountain_west", "sun_belt", "pac_12", "fbs_independents"]):
             team_set = FLASHCARD_SETS[code]
             var = tk.BooleanVar(value=code in default_selected)
             self.set_vars[code] = var
             count = len(team_set.teams) or APPROX_TEAM_COUNTS.get(code, 0)
             text = f"{team_set.display_name} ({count})" if count else team_set.display_name
-            ttk.Checkbutton(g5_frame, text=text, variable=var, command=self._update_info).grid(
+            ttk.Checkbutton(_g5_grid, text=text, variable=var, command=self._update_info).grid(
                 row=_idx // 3, column=_idx % 3, sticky="w", padx=(0, 14), pady=2
             )
 
@@ -691,8 +725,10 @@ class FlashcardGeneratorGUI:
         for label, value in [
             ("None (off)", "none"),
             ("Top-left", "top-left"),
+            ("Top-center", "top-center"),
             ("Top-right", "top-right"),
             ("Bottom-left", "bottom-left"),
+            ("Bottom-center", "bottom-center"),
             ("Bottom-right", "bottom-right"),
         ]:
             ttk.Radiobutton(
