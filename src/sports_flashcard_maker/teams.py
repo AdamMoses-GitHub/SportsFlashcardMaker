@@ -78,8 +78,18 @@ def normalize_team_name(name: str) -> str:
     
     # ALL CAPS detected: convert to title case but preserve known acronyms
     known_acronyms = {
-        "DC", "LA", "NY", "SF", "NJ", "FC", "USA", "MLB", "NFL", "NBA",
-        "NHL", "MLS", "WNBA", "AAC", "ACC", "AHL", "ECU", "USF", "UCF",
+        # Geographic / league abbreviations
+        "DC", "LA", "NY", "SF", "NJ", "FC", "USA",
+        # Pro league abbreviations
+        "MLB", "NFL", "NBA", "NHL", "MLS", "WNBA", "AHL", "AAC", "ACC",
+        # FBS school acronyms
+        "BYU", "ECU", "FAU", "FIU", "FLA", "LSU", "SMU", "TCU",
+        "UAB", "UCLA", "UCF", "UNLV", "UNT", "USC", "USF",
+        "UTEP", "UTSA",
+        # FCS school acronyms
+        "APSU", "EKU", "ETSU", "EWU", "LIU", "MVSU", "NDSU",
+        "NISU", "SDSU", "SFA", "SHSU", "SIU", "UIW", "UCA", "VMI",
+        "WKU",
     }
     
     words = name.split()
