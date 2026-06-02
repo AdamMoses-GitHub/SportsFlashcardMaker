@@ -1,201 +1,79 @@
-# Team Logo Flashcards
+# Sports Flashcard Maker
 
-This project downloads team logos and generates print-ready **front/back flashcard images** with white backgrounds.
+*Because googling "what team is that logo?" for the fifteenth time is a sport in itself.*
 
-## Supported Sets
+![Version](https://img.shields.io/badge/version-0.1.0-blue) ![Python](https://img.shields.io/badge/python-3.10%2B-brightgreen) ![License](https://img.shields.io/badge/license-MIT-orange)
 
-### Professional (American)
+![App Screenshot](screenshot.jpg)
 
-| Code | League |
-|---|---|
-| `mlb` | MLB |
-| `nfl` | NFL |
-| `nba` | NBA |
-| `nhl` | NHL |
-| `wnba` | WNBA |
-| `mls` | MLS |
-| `nwsl` | NWSL |
-| `ufl` | UFL |
+![Sample Card](card.jpg)
 
-### English Football
+---
 
-| Code | League |
-|---|---|
-| `epl` | Premier League |
-| `efl_championship` | EFL Championship |
-| `efl_league_one` | EFL League One |
-| `efl_league_two` | EFL League Two |
+## About
 
-### College Football Conferences
+Remembering 30 MLB logos is hard. Remembering all 134 FBS college football teams is a personality disorder. Most flashcard apps want you to manually drag-and-drop images, write text by hand, and then export to a format that prints crooked anyway.
 
-| Code | Conference |
-|---|---|
-| `acc` | ACC |
-| `big_ten` | Big Ten |
-| `big_12` | Big 12 |
-| `sec` | SEC |
-| `mac` | MAC |
-| `aac` | AAC |
-| `ivy_league` | Ivy League |
-| `pac_12` | Pac-12 |
+Sports Flashcard Maker fetches official team logos straight from ESPN's API, then renders pixel-perfect, print-ready PNG flashcard images with zero manual effort. Point it at a league, pick your card size, and it does the rest — logo cards, text cards, combo cards, the works.
 
-## What you get
+> **Repository:** https://github.com/AdamMoses-GitHub/SportsFlashcardMaker
 
-- Generates print-ready PNGs for every team in the selected set.
-- Default card size is **6×4 inches** (landscape) at **300 DPI** (1800×1200 px). Fully configurable.
-- Logos are centered and scaled to fit while preserving aspect ratio.
-- Two files per team by default:
-  - Front side: centered logo on white background
-  - Back side: large centered team-name text (auto multi-line, auto-sized)
-- Alternative output modes: logo only, text only, or combined logo+text on one card.
-- Each output folder includes a `README.md` summarizing the generation settings and files created.
+---
 
-## Architecture
+## What It Does
 
-The project separates business logic from user interfaces:
+### The Main Features
 
-- **Core Logic** (`src/sports_flashcard_maker/core.py`) — pure business logic, zero UI dependencies
-- **CLI** (`src/sports_flashcard_maker/cli.py`) — command-line interface
-- **GUI** (`src/sports_flashcard_maker/gui.py`) — tkinter desktop GUI
-- **Supporting Modules**:
-  - `teams.py` — set definitions and logo configuration
-  - `download_logos.py` — logo downloader
-  - `flashcards.py` — flashcard image renderer
+- **40+ leagues and conferences** — every major North American pro league, all FBS/FCS college football conferences, English football's top four divisions, NWSL, and UFL
+- **Three card types** — logo-only, text-only, and combo (logo + text) cards in a single run
+- **Flexible naming** — full city+team name, team-only, or city-only; prefix or suffix filename formats
+- **Desktop GUI** — a full tkinter interface with live filename preview and progress tracking
+- **Batch generation** — generate multiple sets in one command, each landing in its own output folder
+- **Print-quality output** — configurable DPI (default 300), nine aspect ratios from 1×1 square to 10×8 landscape
 
-## Setup
+### The Nerdy Stuff
 
-### Conda (recommended)
+- Concurrent logo downloads via `ThreadPoolExecutor` (8 workers) — a 30-team set downloads in seconds
+- ESPN public API integration — no API key, no account, no rate-limit drama
+- Disk caching of raw logos — re-runs skip the network entirely unless `--force-refresh` is set
+- Pillow-based rendering with a smart font fallback chain (`DejaVuSans-Bold → arialbd → Arial → default`)
+- ALL-CAPS API names are auto-normalized to Title Case while preserving known acronyms (BYU, UCLA, ECU…)
 
-```powershell
-conda create -p .conda python=3.13 -y
-conda activate .\.conda
+---
+
+## Quick Start (TL;DR)
+
+Full installation and usage guide: [INSTALL_AND_USAGE.md](INSTALL_AND_USAGE.md)
+
+```bash
+git clone https://github.com/AdamMoses-GitHub/SportsFlashcardMaker
+cd SportsFlashcardMaker
 pip install -e .
-```
-
-### venv
-
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -e .
-```
-
-## Usage
-
-### Command Line (CLI)
-
-```powershell
 sports-flashcards --set mlb
-sports-flashcards --set nfl
-sports-flashcards --set nba
-sports-flashcards --set nhl
-sports-flashcards --set wnba
-sports-flashcards --set mls
-sports-flashcards --set nwsl
-sports-flashcards --set ufl
-sports-flashcards --set epl
-sports-flashcards --set efl_championship
-sports-flashcards --set efl_league_one
-sports-flashcards --set efl_league_two
-sports-flashcards --set acc
-sports-flashcards --set big_ten
-sports-flashcards --set big_12
-sports-flashcards --set sec
-sports-flashcards --set mac
-sports-flashcards --set aac
-sports-flashcards --set ivy_league
-sports-flashcards --set pac_12
 ```
 
-Multiple sets in one command:
+---
 
-```powershell
-sports-flashcards --set mlb nfl nba nhl
-```
+## Tech Stack
 
-#### All Options
-
-| Option | Default | Description |
+| Component | Purpose | Why This One |
 |---|---|---|
-| `--set` | `mlb` | One or more set codes (see table above) |
-| `--output-dir` | `output/<SET>/` | Output folder |
-| `--logos-dir` | `data/logos_raw` | Logo download/cache folder |
-| `--dpi` | `300` | Image DPI |
-| `--card-ratio` | `3x2` | Card size ratio (see table below) |
-| `--card-types` | `logo text` | One or more of `logo`, `text`, `combo` |
-| `--filename-format` | `prefix` | `prefix` (CARDTYPE_TEAM.png) or `suffix` (TEAM_CARDTYPE.png) |
-| `--name-format` | `full` | `full`, `team_only`, or `city_only` |
-| `--split-text-colors` | off | Render location and team name in different colors on back |
-| `--location-color` | `#1f4e79` | Location text color when split colors are on |
-| `--team-color` | `#b22222` | Team text color when split colors are on |
+| **Python 3.10+** | Core language | Match expressions, modern type hints |
+| **Pillow ≥ 10.4** | Image rendering & compositing | The only serious image library in Python |
+| **requests ≥ 2.32** | ESPN API + logo downloads | Battle-tested, simple session management |
+| **tkinter** | Desktop GUI | Ships with Python, zero extra dependencies |
+| **setuptools ≥ 68** | Package build | Standard, works everywhere |
 
-#### Card Ratios
+---
 
-| Ratio | Size | Orientation |
-|---|---|---|
-| `1x1` | 4×4 in | Square |
-| `3x2` | 6×4 in | Landscape |
-| `2x3` | 4×6 in | Portrait |
-| `5x4` | 5×4 in | Landscape |
-| `4x5` | 4×5 in | Portrait |
-| `7x5` | 7×5 in | Landscape |
-| `5x7` | 5×7 in | Portrait |
-| `8x10` | 8×10 in | Portrait |
-| `10x8` | 10×8 in | Landscape |
+## License
 
-### Desktop GUI
+MIT © 2026 Adam Moses
 
-```powershell
-sports-flashcards-gui
-```
+## Contributing
 
-Or run directly:
+PRs welcome. Open an issue first for anything bigger than a bug fix.
 
-```powershell
-python -m sports_flashcard_maker.gui
-```
+---
 
-The GUI has three tabs:
-
-- **Sets** — checkboxes grouped by Professional, English Football, and College Football
-- **Settings** — DPI slider, card ratio, output folder, card output mode, filename pattern, team text options, and split text colors
-- **Output** — filename preview, run summary, and live run log
-
-## Output Structure
-
-```
-output/
-  MLB/
-  NFL/
-  NBA/
-  NHL/
-  WNBA/
-  MLS/
-  NWSL/
-  UFL/
-  PREMIER_LEAGUE/
-  EFL_CHAMPIONSHIP/
-  EFL_LEAGUE_ONE/
-  EFL_LEAGUE_TWO/
-  ACC/
-  BIG_TEN/
-  BIG_12/
-  SEC/
-  MAC/
-  AAC/
-  IVY_LEAGUE/
-  PAC_12/
-```
-
-Default filenames (prefix style, full name format):
-
-```
-front_arizona_diamondbacks.png
-back_arizona_diamondbacks.png
-```
-
-## Notes
-
-- Logos are fetched from ESPN CDN/API endpoints.
-- Split text colors (location vs. team) are not supported for soccer sets that do not expose separate location/team name fields (EPL, EFL leagues, NWSL).
-- For extended configuration examples (filename formats, name formats, batch generation), see [EXTENDED_CONFIG.md](EXTENDED_CONFIG.md).
+<sub>sports flashcards team logos ESPN API print flashcards MLB NFL NBA NHL college football FBS FCS MLS Premier League WNBA UFL NWSL Python Pillow tkinter flashcard maker logo downloader</sub>
