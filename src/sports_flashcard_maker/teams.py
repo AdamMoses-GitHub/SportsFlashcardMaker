@@ -609,6 +609,13 @@ APPROX_TEAM_COUNTS: dict[str, int] = {
     "efl_championship": 24,
     "efl_league_one": 24,
     "efl_league_two": 24,
+    # Other professional football
+    "cfl": 9,
+    # International football / soccer (API-fetched; static approximations)
+    "la_liga": 20,
+    "bundesliga": 18,
+    "serie_a": 20,
+    "ligue_1": 18,
     # FBS – Power 4
     "acc": len(ACC_TEAMS),
     "big_ten": len(BIG_TEN_TEAMS),
@@ -833,7 +840,7 @@ CONFERENCE_LOOKUP: dict[str, dict[str, _CD]] = {
 FLASHCARD_SETS: dict[str, FlashcardSet] = {
     "mlb": FlashcardSet(
         code="mlb",
-        display_name="MLB",
+        display_name="Major League Baseball (MLB)",
         source_mode="template",
         source_template="https://a.espncdn.com/i/teamlogos/mlb/500/{slug}.png",
         source_api_endpoint=None,
@@ -1184,7 +1191,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
     ),
     "nfl": FlashcardSet(
         code="nfl",
-        display_name="NFL",
+        display_name="National Football League (NFL)",
         source_mode="espn_league_api_all",
         source_template=None,
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/football/nfl/teams?limit=200",
@@ -1194,7 +1201,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
     ),
     "nba": FlashcardSet(
         code="nba",
-        display_name="NBA",
+        display_name="National Basketball Association (NBA)",
         source_mode="espn_league_api_all",
         source_template=None,
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/basketball/nba/teams?limit=200",
@@ -1204,7 +1211,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
     ),
     "nhl": FlashcardSet(
         code="nhl",
-        display_name="NHL",
+        display_name="National Hockey League (NHL)",
         source_mode="espn_league_api_all",
         source_template=None,
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/hockey/nhl/teams?limit=200",
@@ -1214,7 +1221,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
     ),
     "wnba": FlashcardSet(
         code="wnba",
-        display_name="WNBA",
+        display_name="Women's National Basketball Association (WNBA)",
         source_mode="espn_league_api_all",
         source_template=None,
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/basketball/wnba/teams?limit=200",
@@ -1224,7 +1231,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
     ),
     "mls": FlashcardSet(
         code="mls",
-        display_name="MLS",
+        display_name="Major League Soccer (MLS)",
         source_mode="espn_league_api_all",
         source_template=None,
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/soccer/usa.1/teams?limit=200",
@@ -1270,7 +1277,7 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
     ),
     "nwsl": FlashcardSet(
         code="nwsl",
-        display_name="NWSL",
+        display_name="National Women's Soccer League (NWSL)",
         source_mode="espn_league_api_all",
         source_template=None,
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/soccer/usa.nwsl/teams?limit=200",
@@ -1280,13 +1287,59 @@ FLASHCARD_SETS: dict[str, FlashcardSet] = {
     ),
     "ufl": FlashcardSet(
         code="ufl",
-        display_name="UFL",
+        display_name="United Football League (UFL)",
         source_mode="espn_league_api_all",
         source_template=None,
         source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/football/ufl/teams?limit=200",
         output_folder="UFL",
         teams=(),
         league_logo_url="https://a.espncdn.com/i/teamlogos/leagues/500/ufl.png",
+    ),
+    "cfl": FlashcardSet(
+        code="cfl",
+        display_name="Canadian Football League (CFL)",
+        source_mode="espn_league_api_all",
+        source_template=None,
+        source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/football/cfl/teams?limit=200",
+        output_folder="CFL",
+        teams=(),
+        league_logo_url="https://a.espncdn.com/i/teamlogos/leagues/500/cfl.png",
+    ),
+    "la_liga": FlashcardSet(
+        code="la_liga",
+        display_name="La Liga",
+        source_mode="espn_league_api_all",
+        source_template=None,
+        source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/soccer/esp.1/teams?limit=200",
+        output_folder="LA_LIGA",
+        teams=(),
+    ),
+    "bundesliga": FlashcardSet(
+        code="bundesliga",
+        display_name="Bundesliga",
+        source_mode="espn_league_api_all",
+        source_template=None,
+        source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/soccer/ger.1/teams?limit=200",
+        output_folder="BUNDESLIGA",
+        teams=(),
+    ),
+    "serie_a": FlashcardSet(
+        code="serie_a",
+        display_name="Serie A",
+        source_mode="espn_league_api_all",
+        source_template=None,
+        source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/soccer/ita.1/teams?limit=200",
+        output_folder="SERIE_A",
+        teams=(),
+    ),
+    "ligue_1": FlashcardSet(
+        code="ligue_1",
+        display_name="Ligue 1",
+        source_mode="espn_league_api_all",
+        source_template=None,
+        source_api_endpoint="https://site.api.espn.com/apis/site/v2/sports/soccer/fra.1/teams?limit=200",
+        output_folder="LIGUE_1",
+        teams=(),
     ),
 }
 

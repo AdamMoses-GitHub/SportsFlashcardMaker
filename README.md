@@ -2,7 +2,7 @@
 
 *Because googling "what team is that logo?" for the fifteenth time is a sport in itself.*
 
-![Version](https://img.shields.io/badge/version-0.1.0-blue) ![Python](https://img.shields.io/badge/python-3.10%2B-brightgreen) ![License](https://img.shields.io/badge/license-MIT-orange)
+![Version](https://img.shields.io/badge/version-0.2.0-blue) ![Python](https://img.shields.io/badge/python-3.10%2B-brightgreen) ![License](https://img.shields.io/badge/license-MIT-orange)
 
 ![App Screenshot](screenshot.jpg)
 
@@ -24,7 +24,7 @@ Sports Flashcard Maker fetches official team logos straight from ESPN's API, the
 
 ### The Main Features
 
-- **40+ leagues and conferences** — every major North American pro league, all FBS/FCS college football conferences, English football's top four divisions, NWSL, and UFL
+- **50+ leagues and conferences** — every major North American pro league (NFL, NBA, NHL, MLB, MLS, WNBA, NWSL, UFL, CFL), all FBS/FCS college football conferences, English football's top four divisions, and international soccer (La Liga, Bundesliga, Serie A, Ligue 1)
 - **Three card types** — logo-only, text-only, and combo (logo + text) cards in a single run
 - **Flexible naming** — full city+team name, team-only, or city-only; prefix or suffix filename formats
 - **Desktop GUI** — a full tkinter interface with live filename preview and progress tracking
@@ -38,6 +38,8 @@ Sports Flashcard Maker fetches official team logos straight from ESPN's API, the
 - Disk caching of raw logos — re-runs skip the network entirely unless `--force-refresh` is set
 - Pillow-based rendering with a smart font fallback chain (`DejaVuSans-Bold → arialbd → Arial → default`)
 - ALL-CAPS API names are auto-normalized to Title Case while preserving known acronyms (BYU, UCLA, ECU…)
+- Logo URLs validated against ESPN-owned domains before any network request is made
+- Automatic retry with exponential backoff on transient network errors (up to 3 attempts)
 
 ---
 
@@ -76,4 +78,4 @@ PRs welcome. Open an issue first for anything bigger than a bug fix.
 
 ---
 
-<sub>sports flashcards team logos ESPN API print flashcards MLB NFL NBA NHL college football FBS FCS MLS Premier League WNBA UFL NWSL Python Pillow tkinter flashcard maker logo downloader</sub>
+<sub>sports flashcards team logos ESPN API print flashcards MLB NFL NBA NHL CFL college football FBS FCS MLS Premier League La Liga Bundesliga Serie A Ligue 1 WNBA UFL NWSL CFL Python Pillow tkinter flashcard maker logo downloader</sub>

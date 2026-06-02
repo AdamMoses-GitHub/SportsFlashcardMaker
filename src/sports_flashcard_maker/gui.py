@@ -43,6 +43,10 @@ class FlashcardGeneratorGUI:
             "efl_league_one",
             "efl_league_two",
             "nwsl",
+            "la_liga",
+            "bundesliga",
+            "serie_a",
+            "ligue_1",
         }
     )
 
@@ -151,6 +155,7 @@ class FlashcardGeneratorGUI:
         pro_sets = [
             "mlb",
             "nfl",
+            "cfl",
             "nba",
             "nhl",
             "wnba",
@@ -331,6 +336,24 @@ class FlashcardGeneratorGUI:
             count = len(team_set.teams) or APPROX_TEAM_COUNTS.get(code, 0)
             text = f"{team_set.display_name} ({count})" if count else team_set.display_name
             chk = ttk.Checkbutton(english_frame, text=text, variable=var, command=self._update_info)
+            chk.grid(row=row, column=col, sticky="w", padx=(0, 14), pady=2)
+
+        # International Football (Soccer)
+        intl_soccer_frame = ttk.LabelFrame(sets_tab, text="International Football (Soccer)", padding=8)
+        intl_soccer_frame.pack(fill="x", pady=(8, 0))
+
+        intl_soccer_sets = ["la_liga", "bundesliga", "serie_a", "ligue_1"]
+
+        for index, code in enumerate(intl_soccer_sets):
+            row = index // 2
+            col = index % 2
+            team_set = FLASHCARD_SETS[code]
+            var = tk.BooleanVar(value=code in default_selected)
+            self.set_vars[code] = var
+
+            count = len(team_set.teams) or APPROX_TEAM_COUNTS.get(code, 0)
+            text = f"{team_set.display_name} ({count})" if count else team_set.display_name
+            chk = ttk.Checkbutton(intl_soccer_frame, text=text, variable=var, command=self._update_info)
             chk.grid(row=row, column=col, sticky="w", padx=(0, 14), pady=2)
 
         # Spacer to push content to top and allow tab expansion
