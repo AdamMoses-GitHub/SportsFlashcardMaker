@@ -8,6 +8,22 @@ from pathlib import Path
 from .core import generate_flashcards, generate_flashcards_batch
 from .teams import FLASHCARD_SETS
 
+_DPI_MIN = 72
+_DPI_MAX = 1200
+
+
+def _bounded_dpi(value: str) -> int:
+    """Argparse type for DPI: integer clamped to a safe range."""
+    try:
+        dpi = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"DPI must be an integer, got '{value}'")
+    if not _DPI_MIN <= dpi <= _DPI_MAX:
+        raise argparse.ArgumentTypeError(
+            f"DPI must be between {_DPI_MIN} and {_DPI_MAX}, got {dpi}"
+        )
+    return dpi
+
 
 def parse_args() -> argparse.Namespace:
     """Parse command-line arguments."""
@@ -36,9 +52,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--dpi",
-        type=int,
+        type=_bounded_dpi,
         default=300,
-        help="DPI metadata used in saved flashcard PNG files.",
+        help=f"DPI metadata used in saved flashcard PNG files ({_DPI_MIN}–{_DPI_MAX}). Default: 300.",
     )
     parser.add_argument(
         "--card-ratio",

@@ -1214,6 +1214,25 @@ class FlashcardGeneratorGUI:
                 messagebox.showerror("Invalid Color", invalid_msg)
                 return
 
+            # Verify the output folder is writable before starting.
+            if output_dir:
+                output_dir_path = Path(output_dir)
+                try:
+                    output_dir_path.mkdir(parents=True, exist_ok=True)
+                    _test_file = output_dir_path / ".write_test"
+                    _test_file.write_text("", encoding="utf-8")
+                    _test_file.unlink()
+                except PermissionError:
+                    msg = f"Cannot write to output folder:\n{output_dir_path}\n\nCheck folder permissions."
+                    self._set_status("✗ Error:\nOutput folder is not writable.")
+                    messagebox.showerror("Permission Error", msg)
+                    return
+                except OSError as _e:
+                    msg = f"Cannot access output folder:\n{output_dir_path}\n\n{_e}"
+                    self._set_status("✗ Error:\nInvalid output folder.")
+                    messagebox.showerror("Invalid Output Folder", msg)
+                    return
+
             # Call pure business logic
             self._append_status("Starting generation...")
             self._append_status(f"Sets selected: {', '.join([FLASHCARD_SETS[code].display_name for code in set_codes])}")
@@ -1420,19 +1439,16 @@ class FlashcardGeneratorGUI:
                 messagebox.showerror("Error", f"Could not delete files: {e}")
 
     def _validate_colors(self, text_color: str, location_color: str, team_color: str, bg_color: str, text_effect_color: str) -> tuple[bool, str]:
-        """Validate color strings. Return (is_valid, error_message)."""
-        import re
-        
-        hex_pattern = r"^#[0-9a-fA-F]{6}$"
-        named_colors = {
-            "navy", "blue", "red", "green", "black", "white", "gray", "grey",
-            "cyan", "magenta", "yellow", "orange", "purple", "pink", "brown",
-            "maroon", "teal", "olive", "silver", "gold", "tan"
-        }
-        
+        """Validate color strings using Pillow's parser. Return (is_valid, error_message)."""
+        from PIL import ImageColor
+
         def is_valid_color(color: str) -> bool:
-            return bool(re.match(hex_pattern, color)) or color.lower() in named_colors
-        
+            try:
+                ImageColor.getrgb(color)
+                return True
+            except (ValueError, AttributeError):
+                return False
+
         if not is_valid_color(text_color):
             return False, f"Invalid text color '{text_color}'. Use hex (#RRGGBB) or named color."
         if not is_valid_color(location_color):
@@ -1443,7 +1459,7 @@ class FlashcardGeneratorGUI:
             return False, f"Invalid background color '{bg_color}'. Use hex (#RRGGBB) or named color."
         if not is_valid_color(text_effect_color):
             return False, f"Invalid effect color '{text_effect_color}'. Use hex (#RRGGBB) or named color."
-        
+
         return True, ""
 
     @staticmethod
@@ -1579,6 +1595,8 @@ class FlashcardGeneratorGUI:
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(json.dumps(data, indent=2), encoding="utf-8")
+            if platform.system() != "Windows":
+                path.chmod(0o600)
         except Exception:
             pass
 

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
+from urllib.parse import urlparse
 
 import requests
 from requests.exceptions import RequestException, Timeout, ConnectionError
@@ -13,14 +15,56 @@ from .teams import ConferenceEndpoint, FlashcardSet, Team, CONFERENCE_LOOKUP, no
 
 TIMEOUT_SECONDS = 20
 _MAX_WORKERS = 8
+_MAX_RETRIES = 3
+_RETRY_BASE_DELAY = 1.0  # seconds; delay doubles on each retry
+
+# Only fetch logos from ESPN-owned domains.
+_ALLOWED_LOGO_DOMAINS = frozenset({
+    "a.espncdn.com",
+    "s.espncdn.com",
+    "a1.espncdn.com",
+    "a2.espncdn.com",
+    "a3.espncdn.com",
+    "a4.espncdn.com",
+    "espn.com",
+    "www.espn.com",
+})
+
+
+def _validate_logo_url(url: str) -> bool:
+    """Return True only for HTTPS URLs served from ESPN-owned domains."""
+    try:
+        parsed = urlparse(url)
+        return (
+            parsed.scheme == "https"
+            and bool(parsed.netloc)
+            and (
+                parsed.netloc in _ALLOWED_LOGO_DOMAINS
+                or parsed.netloc.endswith(".espncdn.com")
+                or parsed.netloc.endswith(".espn.com")
+            )
+        )
+    except Exception:
+        return False
 
 
 def _download_one_logo(logo_url: str, destination: Path) -> None:
-    """Download one logo to *destination* (thread-safe: creates its own session)."""
-    with requests.Session() as session:
-        response = session.get(logo_url, timeout=TIMEOUT_SECONDS)
-        response.raise_for_status()
-    destination.write_bytes(response.content)
+    """Download one logo to *destination* with retry on transient errors (thread-safe)."""
+    last_exc: Exception | None = None
+    for attempt in range(_MAX_RETRIES):
+        try:
+            with requests.Session() as session:
+                response = session.get(logo_url, timeout=TIMEOUT_SECONDS, verify=True)
+                response.raise_for_status()
+            destination.write_bytes(response.content)
+            return
+        except (Timeout, ConnectionError) as exc:
+            last_exc = exc
+            if attempt < _MAX_RETRIES - 1:
+                time.sleep(_RETRY_BASE_DELAY * (2 ** attempt))
+        except RequestException:
+            raise  # Non-transient errors (4xx, 5xx): don't retry
+    raise last_exc  # type: ignore[misc]
 
 
 def _fetch_espn_teams(session: requests.Session, endpoint: str) -> list[dict[str, object]]:
@@ -274,6 +318,10 @@ def download_logos(
 
                 destination = output_dir / f"{team_filename_stem(team)}.png"
 
+                if not _validate_logo_url(logo_url):
+                    skipped_teams.append(f"{team.name}: invalid or non-HTTPS logo URL")
+                    continue
+
                 if not force_refresh and destination.exists():
                     downloaded_files.append(destination)
                     if progress_callback:
@@ -314,31 +362,34 @@ def download_logos(
 
         if skipped_teams:
             skipped_teams.sort()
+            all_skipped = "; ".join(skipped_teams)
             warnings.append(
-                f"Skipped {len(skipped_teams)} teams due to download or configuration errors. "
-                f"Examples: {', '.join(skipped_teams[:3])}"
-                + (f" (and {len(skipped_teams) - 3} more)" if len(skipped_teams) > 3 else "")
+                f"Skipped {len(skipped_teams)} team(s) due to download or configuration errors: {all_skipped}"
             )
 
-        # Download league / conference logo (non-fatal; skip on any error)
         league_logo_path: Path | None = None
         if team_set.league_logo_url:
-            league_logo_dest = output_dir / f"_league_{team_set.code}.png"
-            if not force_refresh and league_logo_dest.exists():
-                league_logo_path = league_logo_dest
+            if not _validate_logo_url(team_set.league_logo_url):
+                warnings.append(
+                    "League logo URL is invalid or non-HTTPS; overlay will be skipped."
+                )
             else:
-                try:
-                    if progress_callback:
-                        progress_callback("  Downloading league logo...")
-                    response = session.get(team_set.league_logo_url, timeout=TIMEOUT_SECONDS)
-                    response.raise_for_status()
-                    league_logo_dest.write_bytes(response.content)
+                league_logo_dest = output_dir / f"_league_{team_set.code}.png"
+                if not force_refresh and league_logo_dest.exists():
                     league_logo_path = league_logo_dest
-                    if progress_callback:
-                        progress_callback(f"      Saved league logo: {league_logo_dest.name}")
-                except Exception as exc:
-                    warnings.append(
-                        f"League logo download failed (overlay will be skipped): {str(exc)[:80]}"
-                    )
+                else:
+                    try:
+                        if progress_callback:
+                            progress_callback("  Downloading league logo...")
+                        response = session.get(team_set.league_logo_url, timeout=TIMEOUT_SECONDS, verify=True)
+                        response.raise_for_status()
+                        league_logo_dest.write_bytes(response.content)
+                        league_logo_path = league_logo_dest
+                        if progress_callback:
+                            progress_callback(f"      Saved league logo: {league_logo_dest.name}")
+                    except Exception as exc:
+                        warnings.append(
+                            f"League logo download failed (overlay will be skipped): {str(exc)[:80]}"
+                        )
 
     return downloaded_files, resolved_teams, warnings, league_logo_path

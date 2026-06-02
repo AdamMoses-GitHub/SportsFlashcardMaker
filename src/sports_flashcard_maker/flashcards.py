@@ -162,8 +162,13 @@ def _fit_back_text_layout(
             if result is not None:
                 return result
 
-    fallback_font = _load_font(12)
-    return fallback_font, _wrap_words(draw, words, fallback_font, max_width), 6
+    # Final fallback: try progressively smaller sizes to avoid overflow.
+    for fallback_size in (12, 10, 8):
+        result = _try_size(fallback_size)
+        if result is not None:
+            return result
+    fallback_font = _load_font(8)
+    return fallback_font, _wrap_words(draw, words, fallback_font, max_width), 4
 
 
 def _fit_two_block_text_layout(
@@ -216,12 +221,17 @@ def _fit_two_block_text_layout(
             if result is not None:
                 return result
 
-    fallback_font = _load_font(12)
+    # Final fallback: try progressively smaller sizes to avoid overflow.
+    for fallback_size in (12, 10, 8):
+        result = _try_size(fallback_size)
+        if result is not None:
+            return result
+    fallback_font = _load_font(8)
     return (
         fallback_font,
         _wrap_words(draw, first_words, fallback_font, max_width),
         _wrap_words(draw, second_words, fallback_font, max_width),
-        6,
+        4,
     )
 
 
@@ -737,7 +747,8 @@ def build_flashcard_pdf(
             png_path = output_dir / f"{name}.png"
             if not png_path.exists():
                 continue
-            images.append(Image.open(png_path).convert("RGB"))
+            with Image.open(png_path) as _img:
+                images.append(_img.convert("RGB"))
 
     if not images:
         raise RuntimeError(
