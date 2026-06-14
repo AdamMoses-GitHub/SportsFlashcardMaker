@@ -11,7 +11,7 @@ from urllib.parse import urlparse
 import requests
 from requests.exceptions import RequestException, Timeout, ConnectionError
 
-from .teams import ConferenceEndpoint, FlashcardSet, Team, CONFERENCE_LOOKUP, normalize_team_name, sorted_teams, team_filename_stem
+from .teams import ConferenceEndpoint, FlashcardSet, Team, CONFERENCE_LOOKUP, ABBREVIATION_LOOKUP, normalize_team_name, sorted_teams, team_filename_stem
 
 TIMEOUT_SECONDS = 20
 _MAX_WORKERS = 8
@@ -231,6 +231,7 @@ def download_logos(
                             conference=team.conference,
                             conference_abbr=team.conference_abbr,
                             division=team.division,
+                            abbreviation=team.abbreviation,
                         )
                     )
 
@@ -275,22 +276,26 @@ def download_logos(
             if progress_callback:
                 progress_callback("  Fetching league teams from ESPN...")
             resolved_teams = _fetch_league_teams(session, team_set.source_api_endpoint)
-            # Enrich teams with hardcoded conference/division data if available.
+            # Enrich teams with hardcoded conference/division and abbreviation data.
             conf_data = CONFERENCE_LOOKUP.get(team_set.code)
-            if conf_data:
+            abbr_data = ABBREVIATION_LOOKUP.get(team_set.code)
+            if conf_data or abbr_data:
                 enriched: list[Team] = []
                 for t in resolved_teams:
-                    cd = conf_data.get(t.name.lower())
-                    if cd is not None:
+                    key = t.name.lower()
+                    cd = conf_data.get(key) if conf_data else None
+                    abbr = abbr_data.get(key) if abbr_data else None
+                    if cd is not None or abbr is not None:
                         enriched.append(Team(
                             name=t.name,
                             logo_slug=t.logo_slug,
                             api_lookup_name=t.api_lookup_name,
                             location_name=t.location_name,
                             mascot_name=t.mascot_name,
-                            conference=cd[0],
-                            conference_abbr=cd[1],
-                            division=cd[2],
+                            conference=cd[0] if cd else t.conference,
+                            conference_abbr=cd[1] if cd else t.conference_abbr,
+                            division=cd[2] if cd else t.division,
+                            abbreviation=abbr,
                         ))
                     else:
                         enriched.append(t)

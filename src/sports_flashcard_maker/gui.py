@@ -711,6 +711,20 @@ class FlashcardGeneratorGUI:
             justify="left",
         ).pack(anchor="w", pady=(6, 0))
 
+        self.show_abbreviation_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(
+            conf_frame,
+            text="Show team abbreviation  (e.g. OSU, UNC, WVU)",
+            variable=self.show_abbreviation_var,
+        ).pack(anchor="w", pady=(8, 0))
+        ttk.Label(
+            conf_frame,
+            text="Applies to FBS college football sets only. Other sets are unaffected.",
+            foreground="#555",
+            wraplength=280,
+            justify="left",
+        ).pack(anchor="w", pady=(2, 0))
+
         index_frame = ttk.LabelFrame(conf_index_row, text='Card Index  (e.g. "1/18")', padding=10)
         index_frame.grid(row=0, column=1, sticky="nsew", padx=(4, 0))
 
@@ -884,6 +898,7 @@ class FlashcardGeneratorGUI:
             self.league_logo_corner_var,
             self.show_conference_var,
             self.abbreviate_conference_var,
+            self.show_abbreviation_var,
             self.index_corner_var,
             self.bg_color_var,
             self.text_effect_var,
@@ -1094,6 +1109,7 @@ class FlashcardGeneratorGUI:
             f"Logo filter: {self.logo_filter_var.get()}",
             f"Conference/division: {'on' if self.show_conference_var.get() else 'off'}"
             + (" (abbreviated)" if self.abbreviate_conference_var.get() else ""),
+            f"Team abbreviation: {'on' if self.show_abbreviation_var.get() else 'off'}",
             f"Card index: {self.index_corner_var.get()}",
             f"League logo overlay: {self.league_logo_corner_var.get()}",
             f"PDF output: {'on' if self.pdf_output_var.get() else 'off'}",
@@ -1228,6 +1244,7 @@ class FlashcardGeneratorGUI:
             text_size = self.text_size_var.get()
             show_conference = self.show_conference_var.get()
             abbreviate_conference = self.abbreviate_conference_var.get()
+            show_abbreviation = self.show_abbreviation_var.get()
             index_corner = self.index_corner_var.get()
             force_refresh = self.force_refresh_var.get()
             pdf_output = self.pdf_output_var.get()
@@ -1285,6 +1302,7 @@ class FlashcardGeneratorGUI:
                 logo_filter=logo_filter,
                 show_conference=show_conference,
                 abbreviate_conference=abbreviate_conference,
+                show_abbreviation=show_abbreviation,
                 index_corner=index_corner,
                 league_logo_corner=league_logo_corner,
                 pdf_output=pdf_output,
@@ -1557,6 +1575,8 @@ class FlashcardGeneratorGUI:
             self.show_conference_var.set(bool(data["show_conference"]))
         if "abbreviate_conference" in data:
             self.abbreviate_conference_var.set(bool(data["abbreviate_conference"]))
+        if "show_abbreviation" in data:
+            self.show_abbreviation_var.set(bool(data["show_abbreviation"]))
         if "show_index" in data:
             corner = data["show_index"]
             if corner in ("none", "top-left", "top-right", "bottom-left", "bottom-right"):
@@ -1606,6 +1626,7 @@ class FlashcardGeneratorGUI:
             "text_size": self.text_size_var.get(),
             "show_conference": self.show_conference_var.get(),
             "abbreviate_conference": self.abbreviate_conference_var.get(),
+            "show_abbreviation": self.show_abbreviation_var.get(),
             "index_corner": self.index_corner_var.get(),
             "bg_color": self.bg_color_var.get(),
             "text_effect": self.text_effect_var.get(),

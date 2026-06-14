@@ -259,14 +259,17 @@ def _draw_team_text_region(
     text_effect: str = "none",
     text_effect_color: str = "#888888",
     size_scale: float = 1.0,
+    show_abbreviation: bool = False,
     show_conference: bool = False,
     abbreviate_conference: bool = False,
     name_order: str = "city_first",
 ) -> None:
-    # Reserve space at the bottom for the conference/division line if needed.
+    # Reserve space at the bottom for abbreviation and/or conference lines if needed.
+    abbr_text = team.abbreviation if show_abbreviation and team.abbreviation else None
+    abbr_reserved = int(region_height_px * 0.15) if abbr_text else 0
     conf_line = _get_conference_line(team, abbreviate_conference) if show_conference else None
     conf_reserved = int(region_height_px * 0.20) if conf_line else 0
-    eff_h = region_height_px - conf_reserved
+    eff_h = region_height_px - abbr_reserved - conf_reserved
 
     back_text = format_team_name(team, name_format, name_order)
     use_split = split_text_colors and name_format == "full"
@@ -337,6 +340,23 @@ def _draw_team_text_region(
             _draw_text_with_effect(draw, (x, y), line, text_color, font, text_effect, text_effect_color)
             y += line_height + spacing
 
+    # Abbreviation line just below the main name area.
+    if abbr_text:
+        abbr_font, abbr_lines, abbr_spacing = _fit_back_text_layout(
+            abbr_text, width_px, abbr_reserved, size_scale=1.0
+        )
+        abbr_line_sizes = [_text_size(draw, l, abbr_font) for l in abbr_lines]
+        abbr_total_h = (
+            sum(h for _, h in abbr_line_sizes)
+            + abbr_spacing * max(0, len(abbr_lines) - 1)
+        )
+        abbr_top = top_offset_px + eff_h
+        ay = abbr_top + max(0, (abbr_reserved - abbr_total_h) // 2)
+        for al, (alw, alh) in zip(abbr_lines, abbr_line_sizes):
+            ax = (width_px - alw) // 2
+            draw.text((ax, ay), al, fill=text_color, font=abbr_font)
+            ay += alh + abbr_spacing
+
     # Conference / division line at the bottom of the reserved area.
     if conf_line:
         conf_font, conf_lines, conf_spacing = _fit_back_text_layout(
@@ -347,7 +367,7 @@ def _draw_team_text_region(
             sum(h for _, h in conf_line_sizes)
             + conf_spacing * max(0, len(conf_lines) - 1)
         )
-        conf_top = top_offset_px + eff_h
+        conf_top = top_offset_px + eff_h + abbr_reserved
         cy = conf_top + max(0, (conf_reserved - conf_total_h) // 2)
         for cl, (clw, clh) in zip(conf_lines, conf_line_sizes):
             cx = (width_px - clw) // 2
@@ -466,6 +486,7 @@ def _build_text_card(
     league_logo_path: Path | None = None,
     league_logo_corner: str = "none",
     text_size: str = "large",
+    show_abbreviation: bool = False,
     show_conference: bool = False,
     abbreviate_conference: bool = False,
     index_corner: str = "none",
@@ -491,6 +512,7 @@ def _build_text_card(
         text_effect=text_effect,
         text_effect_color=text_effect_color,
         size_scale=size_scale,
+        show_abbreviation=show_abbreviation,
         show_conference=show_conference,
         abbreviate_conference=abbreviate_conference,
         name_order=name_order,
@@ -518,6 +540,7 @@ def _build_combined_card(
     logo_filter: str = "none",
     league_logo_path: Path | None = None,
     league_logo_corner: str = "none",
+    show_abbreviation: bool = False,
     show_conference: bool = False,
     abbreviate_conference: bool = False,
     index_corner: str = "none",
@@ -562,6 +585,7 @@ def _build_combined_card(
         text_color,
         text_effect=text_effect,
         text_effect_color=text_effect_color,
+        show_abbreviation=show_abbreviation,
         show_conference=show_conference,
         abbreviate_conference=abbreviate_conference,
         name_order=name_order,
@@ -588,6 +612,7 @@ def build_flashcards(
     team_color: str = "#b22222",
     text_color: str = "black",
     text_size: str = "large",
+    show_abbreviation: bool = False,
     show_conference: bool = False,
     abbreviate_conference: bool = False,
     index_corner: str = "none",
@@ -668,6 +693,7 @@ def build_flashcards(
                 league_logo_path=league_logo_path,
                 league_logo_corner=league_logo_corner,
                 text_size=text_size,
+                show_abbreviation=show_abbreviation,
                 show_conference=show_conference,
                 abbreviate_conference=abbreviate_conference,
                 index_corner=index_corner,
@@ -697,6 +723,7 @@ def build_flashcards(
                 logo_filter=logo_filter,
                 league_logo_path=league_logo_path,
                 league_logo_corner=league_logo_corner,
+                show_abbreviation=show_abbreviation,
                 show_conference=show_conference,
                 abbreviate_conference=abbreviate_conference,
                 index_corner=index_corner,
